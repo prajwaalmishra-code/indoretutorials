@@ -1652,7 +1652,7 @@ body {
     }
 
     .navbar-logo-wrapper img {
-        height: 28px;
+        height: 44px;
     }
 }
 
@@ -1853,7 +1853,7 @@ body {
 
 @media (max-width: 480px) {
     .navbar-logo-wrapper img {
-        height: 30px;
+        height: 45px;
     }
     
     .navbar-search-box input {
