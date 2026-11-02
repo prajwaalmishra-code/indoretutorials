@@ -64,7 +64,76 @@
         min-width: 60px;
     }
 
+    /* ── Page header ── */
+    .ts-page-hd {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 20px;
+    }
+    .ts-page-hd .h1 { margin: 0 0 4px; }
+    .ts-page-hd .small { margin: 0; }
+    .ts-page-hd .btn-primary {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 10px 18px;
+        font-size: 14px;
+        font-weight: 600;
+        border-radius: 8px;
+        white-space: nowrap;
+    }
+
+    /* ── Card header + filters ── */
+    .ts-panel .admin-card-hd {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+    .ts-panel .admin-card-hd h3 { margin: 0; font-size: 18px; font-weight: 600; }
+    .ts-panel .admin-filters form {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: nowrap;
+        margin: 0;
+    }
+    .ts-panel .admin-filter-input {
+        width: auto;
+        height: 40px;
+        margin: 0;
+        padding: 0 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        font-size: 14px;
+        box-sizing: border-box;
+    }
+    .ts-panel .admin-filter-input { min-width: 240px; }
+    .ts-panel .admin-filter-btn {
+        height: 40px;
+        padding: 0 20px;
+        margin: 0;
+        border-radius: 8px;
+    }
+
+    /* ── Empty state ── */
+    .ts-empty {
+        text-align: center;
+        padding: 56px 20px;
+        color: #6b7280;
+    }
+    .ts-empty .ts-empty-icon { font-size: 40px; margin-bottom: 12px; }
+    .ts-empty h4 { margin: 0 0 6px; color: #1f2937; font-size: 17px; }
+    .ts-empty p { margin: 0 0 18px; font-size: 14px; }
+
     @media (max-width: 768px) {
+        .ts-panel .admin-filters,
+        .ts-panel .admin-filters form { width: 100%; flex-wrap: wrap; }
+        .ts-panel .admin-filter-input { min-width: 0; }
         .desktop-ts-table  { display: none; }
         .mobile-testseries-list { display: block; }
 
@@ -83,25 +152,20 @@
 </style>
 
 <div class="wrapper">
-    <h1 class="h1">Test Series Management</h1>
-    <p class="small">Create and manage all test series courses</p>
-
-    <div class="nav-buttons">
+    <div class="ts-page-hd">
+        <div>
+            <h1 class="h1">Test Series Management</h1>
+            <p class="small">Create and manage all test series courses</p>
+        </div>
         <a href="{% url 'test_series_create' %}" class="btn btn-primary">➕ Add Test Series</a>
     </div>
 
-    <div class="panel">
+    <div class="panel ts-panel">
         <div class="admin-card-hd">
             <h3>All Test Series</h3>
             <div class="admin-filters">
-                <form method="GET" style="display:flex;gap:8px;flex-wrap:wrap;">
+                <form method="GET">
                     <input type="text" name="search" class="admin-filter-input" placeholder="Search test series..." value="{{ search_query }}">
-                    <select name="category" class="admin-filter-select">
-                        <option value="">All Categories</option>
-                        {% for category in categories %}
-                        <option value="{{ category.id }}" {% if category_filter == category.id|stringformat:'s' %}selected{% endif %}>{{ category.name }}</option>
-                        {% endfor %}
-                    </select>
                     <button type="submit" class="admin-filter-btn">Filter</button>
                 </form>
             </div>
@@ -116,7 +180,6 @@
                         <thead>
                             <tr>
                                 <th>Title</th>
-                                <th>Category</th>
                                 <th>Tests</th>
                                 <th>Questions</th>
                                 <th>Total Marks</th>
@@ -135,7 +198,6 @@
                                         <span style="background:#f59e0b;color:white;padding:2px 6px;border-radius:4px;font-size:10px;margin-left:8px;">FEATURED</span>
                                     {% endif %}
                                 </td>
-                                <td>{{ series.category.name }}</td>
                                 <td>
                                     <div style="display:flex;align-items:center;gap:5px;">
                                         <span style="background:#3b82f6;color:white;padding:2px 8px;border-radius:12px;font-size:12px;">{{ series.total_tests }}</span>
@@ -190,10 +252,6 @@
                         </div>
 
                         <div class="mts-row">
-                            <span class="mts-label">Category</span>
-                            <span class="mts-value">{{ series.category.name }}</span>
-                        </div>
-                        <div class="mts-row">
                             <span class="mts-label">Tests</span>
                             <span class="mts-value">
                                 <span style="background:#3b82f6;color:white;padding:2px 8px;border-radius:12px;font-size:12px;">{{ series.total_tests }}</span>
@@ -240,19 +298,21 @@
                 <div style="margin-top:20px;text-align:center;">
                     <div class="pagination-row" style="display:inline-flex;gap:8px;">
                         {% if page_obj.has_previous %}
-                            <a href="?page={{ page_obj.previous_page_number }}&search={{ search_query }}&category={{ category_filter }}" class="btn">Previous</a>
+                            <a href="?page={{ page_obj.previous_page_number }}&search={{ search_query }}" class="btn">Previous</a>
                         {% endif %}
                         <span style="padding:8px 12px;">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
                         {% if page_obj.has_next %}
-                            <a href="?page={{ page_obj.next_page_number }}&search={{ search_query }}&category={{ category_filter }}" class="btn">Next</a>
+                            <a href="?page={{ page_obj.next_page_number }}&search={{ search_query }}" class="btn">Next</a>
                         {% endif %}
                     </div>
                 </div>
                 {% endif %}
 
             {% else %}
-                <div style="text-align:center;padding:40px;">
-                    <p>No test series found.</p>
+                <div class="ts-empty">
+                    <div class="ts-empty-icon">📋</div>
+                    <h4>No test series found</h4>
+                    <p>{% if search_query %}Try a different search.{% else %}Get started by creating your first test series.{% endif %}</p>
                     <a href="{% url 'test_series_create' %}" class="btn btn-primary">Create First Test Series</a>
                 </div>
             {% endif %}

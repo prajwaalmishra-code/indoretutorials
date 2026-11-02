@@ -317,8 +317,8 @@ def admin_dashboard(request):
         'this_month_signups': this_month_signups,
         
         # Earnings Stats
-        'total_earnings': f"{total_earnings:.2f}",
-        'this_month_earnings': f"{this_month_earnings:.2f}",
+        'total_earnings': f"{total_earnings:,.2f}",
+        'this_month_earnings': f"{this_month_earnings:,.2f}",
         
         # Course Stats
         'total_live_classes': total_live_classes,
@@ -1708,6 +1708,35 @@ def extra_page_toggle_status(request, pk):
     status = 'activated' if page.is_active else 'deactivated'
     messages.success(request, f'Page {status} successfully!')
     return redirect('extra_page_list')
+
+
+# ======================== CONTACT SUBMISSIONS ========================
+
+@login_required
+@user_passes_test(is_admin)
+def contact_submission_list(request):
+    submissions = ContactSubmission.objects.all()
+    unread_count = submissions.filter(is_read=False).count()
+    context = {'submissions': submissions, 'unread_count': unread_count}
+    return render(request, 'contact_submissions_list.html', context)
+
+
+@login_required
+@user_passes_test(is_admin)
+def contact_submission_mark_read(request, pk):
+    submission = get_object_or_404(ContactSubmission, pk=pk)
+    submission.is_read = True
+    submission.save(update_fields=['is_read'])
+    return redirect('contact_submission_list')
+
+
+@login_required
+@user_passes_test(is_admin)
+def contact_submission_delete(request, pk):
+    submission = get_object_or_404(ContactSubmission, pk=pk)
+    submission.delete()
+    messages.success(request, 'Submission deleted successfully!')
+    return redirect('contact_submission_list')
 
 
 # ======================== CATEGORIES ========================

@@ -1,0 +1,108 @@
+# adminpanel/management/commands/apply_brand_assets.py
+from pathlib import Path
+
+from django.conf import settings
+from django.core.files import File
+from django.core.management.base import BaseCommand
+
+from adminpanel.models import (
+    AboutUsSection,
+    AuthPageSettings,
+    Banner,
+    CTASection,
+    FooterSettings,
+    NavbarSettings,
+    ThemeSettings,
+)
+
+BRAND_DIR = Path(settings.BASE_DIR) / "base" / "static" / "img" / "brand"
+BRAND_COLOR = "#FCBC00"
+
+BANNERS = [
+    ("Learn Smarter, Score Higher", "Indore Tutorials - live classes, video courses and test series", 1),
+    ("Boost Your Score with Smart Tests", "Indore Tutorials - mock tests, PYQs and all-India rank", 2),
+    ("Knowledge That Costs Nothing", "Indore Tutorials - knowledge that costs nothing, empowers everything", 3),
+    ("Learn Anytime, Anywhere", "Indore Tutorials - video lectures, notes and e-books", 4),
+]
+
+
+def attach(instance, field_name, filename):
+    """Copy base/static/img/brand/<filename> into the field, unless an identical copy is already there."""
+    field = getattr(instance, field_name)
+    source = (BRAND_DIR / filename).read_bytes()
+    if field and Path(field.name).name == filename:
+        try:
+            with field.storage.open(field.name, "rb") as current:
+                if current.read() == source:
+                    return False
+        except FileNotFoundError:
+            pass
+        # Re-rendered artwork: replace the stored file under the same name.
+        field.storage.delete(field.name)
+    with open(BRAND_DIR / filename, "rb") as fh:
+        field.save(filename, File(fh), save=False)
+    return True
+
+
+class Command(BaseCommand):
+    help = (
+        "Apply the Indore Tutorials brand artwork (logo, favicon, banners, login/signup images) "
+        "and brand color to the site settings. Run design/brand_assets/export.py first if you "
+        "re-rendered the artwork. Safe to run more than once."
+    )
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--keep-old-banners",
+            action="store_true",
+            help="Leave existing banners active instead of deactivating them.",
+        )
+
+    def handle(self, *args, **options):
+        theme = ThemeSettings.get_solo()
+        theme.primary_color = BRAND_COLOR
+        theme.save()
+
+        navbar = NavbarSettings.objects.first() or NavbarSettings()
+        attach(navbar, "logo", "logo-inline.png")
+        attach(navbar, "favicon", "favicon.png")
+        navbar.save()
+
+        footer = FooterSettings.objects.first() or FooterSettings()
+        attach(footer, "logo", "logo-horizontal-light.png")
+        footer.save()
+
+        about = AboutUsSection.objects.first()
+        if about:
+            attach(about, "logo", "logo-badge.png")
+            about.save()
+
+        cta = CTASection.objects.first()
+        if cta:
+            cta.button_color = BRAND_COLOR
+            cta.save()
+
+        auth = AuthPageSettings.get_solo()
+        attach(auth, "login_image", "auth-login.webp")
+        attach(auth, "signup_image", "auth-signup.webp")
+        attach(auth, "login_image_mobile", "auth-login-mobile.webp")
+        attach(auth, "signup_image_mobile", "auth-signup-mobile.webp")
+        auth.save()
+
+        brand_ids = []
+        for i, (title, alt, order) in enumerate(BANNERS, start=1):
+            banner = Banner.objects.filter(title=title).first() or Banner(title=title)
+            banner.alt_text = alt
+            banner.order = order
+            banner.is_active = True
+            attach(banner, "image", f"banner-{i}-desktop.webp")
+            attach(banner, "mobile_image", f"banner-{i}-mobile.webp")
+            banner.save()
+            brand_ids.append(banner.pk)
+
+        if not options["keep_old_banners"]:
+            retired = Banner.objects.filter(is_active=True).exclude(pk__in=brand_ids).update(is_active=False)
+            if retired:
+                self.stdout.write(f"Deactivated {retired} older banner(s); re-enable them from the admin panel if needed.")
+
+        self.stdout.write(self.style.SUCCESS("Brand assets applied."))

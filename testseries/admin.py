@@ -52,8 +52,8 @@ class TestAdmin(admin.ModelAdmin):
     render_test_button.allow_tags = True
 
 class TestSeriesAdmin(admin.ModelAdmin):
-    list_display = ('title', 'category', 'difficulty', 'total_tests', 'is_active', 'created_at')
-    list_filter = ('category', 'difficulty', 'is_active')
+    list_display = ('title', 'difficulty', 'total_tests', 'is_active', 'created_at')
+    list_filter = ('difficulty', 'is_active')
     search_fields = ('title', 'description')
     prepopulated_fields = {'slug': ('title',)}
     readonly_fields = ('total_tests', 'total_attempts', 'average_score')

@@ -7,6 +7,7 @@
     <title>{{ course.name }} - Live Class Detail</title>
     <link rel="stylesheet" href="{% static 'css/fontawesome/all.min.css' %}">
     <link rel="stylesheet" href="{% static 'css/typography.css' %}">
+    {% include "partials/theme_vars.html" %}
     <style>
         :root{
             --ad-primary:var(--brand-primary);
@@ -16,8 +17,8 @@
             --panel:#ffffff;
             --bg:#fafbff;
             --text:#162033;
-            --accent:#2d65f2;
-            --live-accent:#8246ef;
+            --accent:var(--brand-primary-text);
+            --live-accent:#14141b;
             --free-accent:#10b981;
         }
         body {
@@ -28,7 +29,7 @@
         }
         /* Header */
         .course-header {
-            background: linear-gradient(120deg, {% if course.is_free %}var(--free-accent), #059669{% else %}var(--live-accent), #6d28d9{% endif %});
+            background: linear-gradient(120deg, {% if course.is_free %}var(--free-accent), #059669{% else %}var(--live-accent), #2c2c38{% endif %});
             color: #fff;
             padding: 28px 16px;
         }
@@ -226,7 +227,7 @@
             transition: all 0.3s ease;
         }
         .back-btn:hover {
-            background: {% if course.is_free %}#059669{% else %}#6d28d9{% endif %};
+            background: {% if course.is_free %}#059669{% else %}#2c2c38{% endif %};
             transform: translateX(-2px);
         }
 
@@ -347,7 +348,7 @@
                 </div>
                 {% if user.is_authenticated %}
                     {% if is_purchased %}
-                        <button class="buy-btn" style="background: linear-gradient(135deg, #3b82f6, #2563eb); pointer-events: none;">
+                        <button class="buy-btn" style="background: linear-gradient(135deg, #10b981, #059669); pointer-events: none;">
                             <i class="fa fa-check"></i> Already Enrolled
                         </button>
                     {% else %}
@@ -623,7 +624,7 @@ function initiatePayment(courseType, courseId, event) {
         }
       },
       theme: {
-        color: '#667eea'
+        color: '#14141b'
       }
     };
 

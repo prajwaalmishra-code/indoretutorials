@@ -103,6 +103,36 @@
           </label>
         </p>
 
+        <p class="col-3">
+          <label>
+            <input type="checkbox" name="is_demo" {% if test.is_demo %}checked{% endif %}>
+            Free Demo Test
+          </label>
+        </p>
+
+        <p class="col-3">
+          <label for="paper_type">Paper Type</label>
+          <select id="paper_type" name="paper_type">
+            {% for value, label in test.PAPER_TYPES %}
+              <option value="{{ value }}" {% if test.paper_type == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </p>
+
+        <p class="col-3">
+          <label for="exam_year">Exam Year (previous year papers)</label>
+          <input type="number" id="exam_year" name="exam_year" min="1950" max="2100" value="{{ test.exam_year|default_if_none:'' }}" placeholder="e.g. 2024">
+        </p>
+
+        <p class="col-3">
+          <label for="calculator">On-screen Calculator</label>
+          <select id="calculator" name="calculator">
+            <option value="none" {% if test.calculator == 'none' %}selected{% endif %}>Not allowed</option>
+            <option value="basic" {% if test.calculator == 'basic' %}selected{% endif %}>Basic</option>
+            <option value="scientific" {% if test.calculator == 'scientific' %}selected{% endif %}>Scientific</option>
+          </select>
+        </p>
+
         <p class="col-6">
           <label for="start_time">Start Time (Optional)</label>
           <input type="datetime-local" id="start_time" name="start_time"

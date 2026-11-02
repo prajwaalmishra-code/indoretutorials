@@ -177,7 +177,7 @@ html, body {
 
 .admin-topbar {
   position: fixed;
-  left: 310px;
+  left: 280px;
   top: 0;
   right: 0;
   height: 64px;
@@ -236,7 +236,7 @@ html, body {
 }
 
 .admin-main {
-  margin-left: 300px;
+  margin-left: 280px;
   margin-top: 64px;
   padding: 30px;
   background: var(--admin-bg);
@@ -269,11 +269,12 @@ html, body {
   font-size: 14px;
 }
 
-.admin-kpis { 
-  display: grid; 
-  gap: 20px; 
-  grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); 
-  margin-bottom: 40px; 
+.admin-kpis {
+  display: grid;
+  gap: 20px;
+  /* 8 cards: an even 4 x 2 on desktop */
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-bottom: 40px;
 }
 
 .admin-kpi {
@@ -281,11 +282,18 @@ html, body {
   border: 1px solid var(--admin-border); 
   border-radius: 12px; 
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  padding: 24px; 
-  display: flex; 
-  align-items: center; 
+  padding: 20px 22px;
+  display: flex;
+  align-items: center;
   gap: 16px;
+  min-width: 0;
   transition: all 0.3s ease;
+}
+
+/* the text column may shrink instead of pushing out of the card */
+.admin-kpi > div:last-child {
+  flex: 1;
+  min-width: 0;
 }
 
 .admin-kpi:hover {
@@ -294,8 +302,9 @@ html, body {
 }
 
 .admin-kpi .admin-kpi-ico {
-  width: 44px; 
-  height: 44px; 
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px; 
   border-radius: 12px; 
   display: flex; 
   align-items: center; 
@@ -307,28 +316,44 @@ html, body {
 }
 
 .admin-kpi .admin-kpi-ico i {
-  font-size: 24px;
+  font-size: 22px;
 }
 
-.admin-kpi .admin-kpi-label { 
-  font-size: 13px; 
-  color: #6b7280; 
-  text-transform: none;
-  margin-bottom: 8px;
-}
-
-.admin-kpi .admin-kpi-value { 
-  font-size: 28px; 
+.admin-kpi .admin-kpi-rupee {
+  font-size: 26px;
   font-weight: 700;
+  line-height: 1;
+}
+
+.admin-kpi .admin-kpi-label {
+  font-size: 13px;
+  color: #6b7280;
+  text-transform: none;
+  margin-bottom: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-kpi .admin-kpi-value {
+  font-size: clamp(20px, 1.9vw, 28px);
+  font-weight: 700;
+  line-height: 1.2;
   color: #1f2937;
-  margin-bottom: 6px; 
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .admin-kpi small {
   display: block;
-  margin-top: 6px;
+  margin-top: 4px;
   font-size: 12px;
   font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .admin-kpi-change {
@@ -783,7 +808,7 @@ html, body {
 
 * { box-sizing: border-box; }
 body { margin: 0; font-family: var(--font-sans); background: var(--admin-bg); color: var(--admin-text); }
-.wrapper { max-width: 1200px; margin: 24px auto; padding: 0 16px; min-height: auto; }
+.wrapper { max-width: 100%; margin: 24px 0; padding: 0 16px; min-height: auto; box-sizing: border-box; }
 .h1 { font-size: 24px; font-weight: 800; margin: 0 0 6px; }
 .small { color: var(--admin-muted); font-size: 13px; margin-bottom: 12px; }
 .panel { background: var(--admin-panel); border: 1px solid var(--admin-border); border-radius: 12px; box-shadow: var(--admin-card-shadow); padding: 20px; margin-top: 20px; }
@@ -1188,7 +1213,7 @@ section.admin-card {
   }
 
   .admin-kpis {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -1253,7 +1278,7 @@ section.admin-card {
   }
 
   .admin-kpis {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 15px;
     margin-bottom: 30px;
   }
@@ -1361,6 +1386,12 @@ section.admin-card {
     gap: 8px;
   }
 }
+
+body.admin-nav-loading .admin-main {
+  opacity: 0.55;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
 </style>
 {% block extra_css %}{% endblock %}
 </head>
@@ -1399,10 +1430,10 @@ section.admin-card {
         </div>
         
         <div class="admin-kpi">
-          <div class="admin-kpi-ico"><i class="fas fa-rupee-sign"></i></div>
+          <div class="admin-kpi-ico"><span class="admin-kpi-rupee">₹</span></div>
           <div>
             <div class="admin-kpi-label">Total Earnings</div>
-            <div class="admin-kpi-value">₹{{ total_earnings }}</div>
+            <div class="admin-kpi-value" title="₹{{ total_earnings }}">₹{{ total_earnings }}</div>
             <small style="color: #10b981;">
               +₹{{ this_month_earnings }} this month
             </small>
@@ -1635,26 +1666,22 @@ section.admin-card {
     </main>
   </div>
 
+<script src="{% static 'js/admin-spa-nav.js' %}"></script>
 <script>
-document.querySelectorAll('.admin-dropdown').forEach(item => {
-  item.addEventListener('click', function(e){
-    e.preventDefault();
-    let submenu = this.nextElementSibling;
-    if (submenu) {
-      submenu.style.display = submenu.style.display === 'flex' ? 'none' : 'flex';
-    }
-  });
-});
-
+// Sidebar dropdown toggling and the mobile-close-on-navigate behavior are
+// registered by admin-spa-nav.js (and re-registered by it after every AJAX
+// navigation swaps in a fresh sidebar).
 const mobileMenuBtn = document.getElementById('mobileMenuBtn');
-const sidebar = document.querySelector('.admin-sidebar');
 const overlay = document.getElementById('sidebarOverlay');
 
 function toggleSidebar() {
+  // Looked up fresh each call since AJAX navigation replaces the sidebar element.
+  const sidebar = document.querySelector('.admin-sidebar');
+  if (!sidebar) return;
   sidebar.classList.toggle('mobile-open');
   overlay.classList.toggle('active');
   mobileMenuBtn.classList.toggle('hidden');
-  
+
   if (sidebar.classList.contains('mobile-open')) {
     document.body.style.overflow = 'hidden';
   } else {
@@ -1668,19 +1695,12 @@ if (mobileMenuBtn) {
 
 if (overlay) {
   overlay.addEventListener('click', function() {
-    if (sidebar.classList.contains('mobile-open')) {
+    const sidebar = document.querySelector('.admin-sidebar');
+    if (sidebar && sidebar.classList.contains('mobile-open')) {
       toggleSidebar();
     }
   });
 }
-
-document.querySelectorAll('.admin-sidebar a:not(.admin-dropdown)').forEach(link => {
-  link.addEventListener('click', function() {
-    if (window.innerWidth <= 900 && sidebar.classList.contains('mobile-open')) {
-      setTimeout(() => toggleSidebar(), 100);
-    }
-  });
-});
 
 function filterTransactions() {
   const searchInput = document.getElementById('searchInput')?.value.toLowerCase() || '';

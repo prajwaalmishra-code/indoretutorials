@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Offline - Indore Tutorial</title>
+    {% include "partials/theme_vars.html" %}
     <style>
         * {
             margin: 0;
@@ -17,7 +18,7 @@
             align-items: center;
             justify-content: center;
             min-height: 100vh;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #14141b 0%, #2c2c38 100%);
             color: #333;
             padding: 20px;
         }
@@ -38,7 +39,7 @@
         }
         
         h1 {
-            color: var(--brand-primary);
+            color: var(--brand-primary-text);
             font-size: 28px;
             margin-bottom: 15px;
         }
@@ -52,7 +53,7 @@
         
         .retry-btn {
             background: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-primary-dark) 100%);
-            color: white;
+            color: var(--brand-on-primary, #14141b);
             border: none;
             padding: 14px 32px;
             font-size: 16px;

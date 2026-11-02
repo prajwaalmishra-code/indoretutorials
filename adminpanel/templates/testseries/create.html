@@ -25,15 +25,7 @@
             <label for="title">Test Series Title *</label>
             <p><input type="text" id="title" name="title" placeholder="e.g., JEE Main 2025 Mock Test Series" required></p>
 
-            <label for="category">Category *</label>
-            <p>
-                <select id="category" name="category" required>
-                    <option value="">Select Category</option>
-                    {% for category in categories %}
-                        <option value="{{ category.id }}">{{ category.name }}</option>
-                    {% endfor %}
-                </select>
-            </p>
+            {% include 'testseries/_board_fields.html' %}
 
             <label for="description">Description *</label>
             <p><textarea id="description" name="description" rows="4" placeholder="Describe what this test series covers..." required></textarea></p>

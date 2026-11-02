@@ -3,7 +3,6 @@ from django.contrib import messages
 from django.core.paginator import Paginator
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.db.models import Q
-import json
 
 # Import models
 from video_courses.models import Category
@@ -37,9 +36,7 @@ def is_admin(user):
 def test_series_manage(request):
     """Manage all test series courses"""
     search_query = request.GET.get('search', '')
-    category_filter = request.GET.get('category', '')
-
-    test_series = TestSeries.objects.select_related('category').prefetch_related('tests')
+    test_series = TestSeries.objects.prefetch_related('tests')
 
     # Apply filters
     if search_query:
@@ -47,9 +44,6 @@ def test_series_manage(request):
             Q(title__icontains=search_query) |
             Q(description__icontains=search_query)
         )
-
-    if category_filter:
-        test_series = test_series.filter(category_id=category_filter)
 
     test_series = test_series.order_by('-created_at')
 
@@ -64,15 +58,28 @@ def test_series_manage(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    categories = Category.objects.all().order_by('name')
-
     context = {
         'page_obj': page_obj,
         'search_query': search_query,
-        'category_filter': category_filter,
-        'categories': categories,
     }
     return render(request, 'testseries/manage.html', context)
+
+def _board_fields_from_post(post):
+    """(board, grade, stream, exam) from the test series form; stream is kept only for Class 11-12."""
+    board = post.get('board', '') if post.get('board') in dict(TestSeries.BOARD_CHOICES) else ''
+    grade = int(post['grade']) if (post.get('grade') or '').isdigit() and 1 <= int(post['grade']) <= 12 else None
+    stream = post.get('stream', '') if grade in (11, 12) and post.get('stream') in dict(TestSeries.STREAM_CHOICES) else ''
+    exam = (post.get('exam') or '').strip()[:100]
+    return board, grade, stream, exam
+
+
+def _board_choice_context():
+    return {
+        'board_choices': TestSeries.BOARD_CHOICES,
+        'grade_choices': TestSeries.GRADE_CHOICES,
+        'stream_choices': TestSeries.STREAM_CHOICES,
+        'exam_choices': list(Category.objects.order_by('name').values_list('name', flat=True)),
+    }
 
 # ---------------------------------------------
 # Create Test Series Course
@@ -83,7 +90,7 @@ def test_series_create(request):
     """Create new test series course"""
     if request.method == 'POST':
         title = request.POST.get('title')
-        category_id = request.POST.get('category')
+        board, grade, stream, exam = _board_fields_from_post(request.POST)
         description = request.POST.get('description')
         difficulty = request.POST.get('difficulty')
         estimated_duration = request.POST.get('estimated_duration')
@@ -96,10 +103,12 @@ def test_series_create(request):
         thumbnail = request.FILES.get('thumbnail')
 
         try:
-            category = Category.objects.get(id=category_id)
             test_series = TestSeries.objects.create(
                 title=title,
-                category=category,
+                board=board,
+                grade=grade,
+                stream=stream,
+                exam=exam,
                 description=description,
                 difficulty=difficulty,
                 estimated_duration=estimated_duration,
@@ -111,16 +120,15 @@ def test_series_create(request):
                 is_featured=is_featured,
                 thumbnail=thumbnail,
             )
-            messages.success(request, f'✅ Test series course "{title}" created successfully! You can now schedule tests under it.')
+            messages.success(request, f'Test series course "{title}" created successfully! You can now schedule tests under it.')
             return redirect('test_series_detail', pk=test_series.pk)
 
-        except Category.DoesNotExist:
-            messages.error(request, '❌ Selected category does not exist. Please select a valid category.')
         except Exception as e:
-            messages.error(request, f'❌ Error creating test series course: {str(e)}')
+            messages.error(request, f'Error creating test series course: {str(e)}')
 
-    categories = Category.objects.all().order_by('name')
-    return render(request, 'testseries/create.html', {'categories': categories})
+    return render(request, 'testseries/create.html', _board_choice_context())
+
+
 
 # ---------------------------------------------
 # Test Series Detail - View All Scheduled Tests
@@ -161,7 +169,7 @@ def test_series_edit(request, pk):
     if request.method == 'POST':
         old_title = test_series.title
         test_series.title = request.POST.get('title')
-        test_series.category = Category.objects.get(id=request.POST.get('category'))
+        test_series.board, test_series.grade, test_series.stream, test_series.exam = _board_fields_from_post(request.POST)
         test_series.description = request.POST.get('description')
         test_series.difficulty = request.POST.get('difficulty')
         test_series.estimated_duration = request.POST.get('estimated_duration')
@@ -178,13 +186,30 @@ def test_series_edit(request, pk):
 
         try:
             test_series.save()
-            messages.success(request, f'✅ Test series course "{old_title}" updated successfully!')
+            messages.success(request, f'Test series course "{old_title}" updated successfully!')
             return redirect('test_series_detail', pk=test_series.pk)
         except Exception as e:
-            messages.error(request, f'❌ Error updating test series course: {str(e)}')
+            messages.error(request, f'Error updating test series course: {str(e)}')
 
-    categories = Category.objects.all().order_by('name')
-    return render(request, 'testseries/edit.html', {'test_series': test_series, 'categories': categories})
+    return render(request, 'testseries/edit.html', {
+        'test_series': test_series,
+        **_board_choice_context(),
+    })
+
+def _calculator_from_post(post):
+    value = post.get('calculator', 'none')
+    return value if value in dict(Test.CALCULATOR_CHOICES) else 'none'
+
+
+def _paper_fields_from_post(post):
+    """(paper_type, exam_year) from the test form; the year only applies to previous year papers."""
+    paper_type = post.get('paper_type', 'mock')
+    if paper_type not in dict(Test.PAPER_TYPES):
+        paper_type = 'mock'
+    year = post.get('exam_year', '').strip()
+    exam_year = int(year) if paper_type == 'pyp' and year.isdigit() and 1950 <= int(year) <= 2100 else None
+    return paper_type, exam_year
+
 
 # ---------------------------------------------
 # Create Scheduled Test
@@ -205,6 +230,7 @@ def test_create(request, series_pk):
         allow_review = request.POST.get('allow_review') == 'on'
         start_time = request.POST.get('start_time')
         end_time = request.POST.get('end_time')
+        paper_type, exam_year = _paper_fields_from_post(request.POST)
 
         try:
             test = Test.objects.create(
@@ -216,17 +242,21 @@ def test_create(request, series_pk):
                 shuffle_questions=shuffle_questions,
                 show_result_immediately=show_result_immediately,
                 allow_review=allow_review,
+                calculator=_calculator_from_post(request.POST),
+                is_demo=request.POST.get('is_demo') == 'on',
+                paper_type=paper_type,
+                exam_year=exam_year,
                 start_time=start_time if start_time else None,
                 end_time=end_time if end_time else None,
             )
             messages.success(
                 request,
-                f'✅ Scheduled test "{title}" created successfully under "{test_series.title}"! Now add questions to complete the test.'
+                f'Scheduled test "{title}" created successfully under "{test_series.title}"! Now add questions to complete the test.'
             )
             return redirect('test_edit', pk=test.pk)
 
         except Exception as e:
-            messages.error(request, f'❌ Error creating scheduled test: {str(e)}')
+            messages.error(request, f'Error creating scheduled test: {str(e)}')
 
     return render(request, 'testseries/test_create.html', {'test_series': test_series})
 
@@ -250,6 +280,9 @@ def test_edit(request, pk):
             test.shuffle_questions = request.POST.get('shuffle_questions') == 'on'
             test.show_result_immediately = request.POST.get('show_result_immediately') == 'on'
             test.allow_review = request.POST.get('allow_review') == 'on'
+            test.calculator = _calculator_from_post(request.POST)
+            test.is_demo = request.POST.get('is_demo') == 'on'
+            test.paper_type, test.exam_year = _paper_fields_from_post(request.POST)
             test.is_active = request.POST.get('is_active') == 'on'
 
             start_time = request.POST.get('start_time')
@@ -259,9 +292,9 @@ def test_edit(request, pk):
 
             try:
                 test.save()
-                messages.success(request, f'✅ Scheduled test "{old_title}" updated successfully!')
+                messages.success(request, f'Scheduled test "{old_title}" updated successfully!')
             except Exception as e:
-                messages.error(request, f'❌ Error updating scheduled test: {str(e)}')
+                messages.error(request, f'Error updating scheduled test: {str(e)}')
 
     questions = test.questions.select_related('subject').order_by('order')
     subjects = Subject.objects.filter(is_active=True)
@@ -358,7 +391,7 @@ def question_create(request, test_pk):
             return redirect('test_edit', pk=test.pk)
 
         except Exception as e:
-            messages.error(request, f'❌ Error creating question: {str(e)}')
+            messages.error(request, f'Error creating question: {str(e)}')
 
     subjects = Subject.objects.filter(is_active=True)
     return render(request, 'testseries/question_create.html', {'test': test, 'subjects': subjects})

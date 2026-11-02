@@ -15,13 +15,13 @@
   
   {% get_theme_settings as theme %}
   <!-- PWA Meta Tags -->
-  <meta name="theme-color" content="{{ theme.primary_color|default:'#D4AF37' }}">
+  <meta name="theme-color" content="{{ theme.primary_color|default:"#FCBC00" }}">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Indore Tutorial">
   <meta name="application-name" content="Indore Tutorial">
-  <meta name="msapplication-TileColor" content="{{ theme.primary_color|default:'#D4AF37' }}">
+  <meta name="msapplication-TileColor" content="{{ theme.primary_color|default:"#FCBC00" }}">
   <meta name="msapplication-tap-highlight" content="no">
   <meta name="msapplication-TileImage" content="{% static 'img/icon-192.png' %}">
   
@@ -50,14 +50,7 @@
   <link rel="stylesheet" href="{% static 'css/style.css' %}">
   <link rel="stylesheet" href="{% static 'css/home-components.css' %}">
 
-  <!-- Site theme color, admin-configurable under Customize Website > Theme Color -->
-  <style>
-    :root {
-      --brand-primary: {{ theme.primary_color|default:"#D4AF37" }};
-      --brand-primary-dark: {{ theme.primary_color_dark|default:"#ae902d" }};
-      --brand-primary-rgb: {{ theme.primary_color_rgb|default:"212, 175, 55" }};
-    }
-  </style>
+  {% include "partials/theme_vars.html" %}
 </head>
 <body>
 
@@ -86,6 +79,10 @@
     {% include "product_bundle.html" %}
 
     {% render_about_us_section %}
+
+    {% render_contact_section %}
+
+    {% include "tutor_widget.html" %}
 
     {% endblock content %}
 

@@ -1,7 +1,7 @@
 {% if about_us %}
 
 <!-- About Us Section -->
-<div class="aboutus-section">
+<div class="aboutus-section" id="about-us">
   <div class="aboutus-heading">{{ about_us.heading }}</div>
   <div class="aboutus-flex">
     <div class="aboutus-info-card">
@@ -119,7 +119,7 @@
 
 .aboutus-heading {
   font-size: 2.13rem;
-  color: var(--brand-primary);
+  color: var(--brand-primary-text);
   font-weight: 900;
   text-align: left;
   margin-bottom: 25px;
@@ -207,7 +207,7 @@
 }
 
 .aboutus-item-icon {
-  color: var(--brand-primary);
+  color: var(--brand-primary-text);
   min-width: 25px;
   font-size: 1.20em;
   margin-top: 2px;
@@ -232,7 +232,7 @@
 }
 
 .aboutus-social {
-  color: #fff;
+  color: var(--brand-on-primary, #14141b);
   background: var(--brand-primary);
   width: 38px; 
   height: 38px;
@@ -271,7 +271,7 @@
 
 .aboutus-services-title {
   font-size: 1.15em;
-  color: var(--brand-primary);
+  color: var(--brand-primary-text);
   font-weight: 700;
   margin-bottom: 12px;
   letter-spacing: 0.5px;
@@ -335,7 +335,7 @@
 
 .aboutus-why-title {
   font-size: 1.11em;
-  color: var(--brand-primary);
+  color: var(--brand-primary-text);
   font-weight: 700;
   margin-bottom: 12px;
   letter-spacing: 0.5px;

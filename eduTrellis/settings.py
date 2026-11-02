@@ -7,10 +7,19 @@ from pathlib import Path
 import os
 import dj_database_url
 
+try:
+    from dotenv import load_dotenv
+except ImportError:  # python-dotenv is optional; real environment variables still work
+    load_dotenv = None
+
 # --------------------
 # BASE SETTINGS
 # --------------------
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Local secrets live in .env (git-ignored). Variables already set in the environment win.
+if load_dotenv:
+    load_dotenv(BASE_DIR / ".env")
 
 # SECURITY
 SECRET_KEY = os.environ.get(
@@ -236,6 +245,11 @@ RAZORPAY_KEY_ID = os.environ.get("RAZORPAY_KEY_ID", "")
 RAZORPAY_KEY_SECRET = os.environ.get("RAZORPAY_KEY_SECRET", "")
 
 JITSI_DOMAIN = os.environ.get("JITSI_DOMAIN", "meet.jit.si")
+
+# "Tutor" AI teacher chat on the home page (Vidhyantra chat API)
+TUTOR_API_URL = os.environ.get("TUTOR_API_URL", "https://www.vidhyantra.online/api/v1/chat/")
+TUTOR_API_KEY = os.environ.get("TUTOR_API_KEY", "")
+TUTOR_MODEL = os.environ.get("TUTOR_MODEL", "sol")
 
 # --------------------
 # DEFAULTS

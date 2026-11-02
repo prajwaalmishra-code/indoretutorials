@@ -3,8 +3,9 @@ from base.models import User
 from django.utils import timezone
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils.text import slugify
-from video_courses.models import Category
 import uuid
+
+from testseries.boards import BOARD_CHOICES
 import json
 
 class TestSeries(models.Model):
@@ -15,9 +16,24 @@ class TestSeries(models.Model):
         ('expert', 'Expert'),
     ]
     
+    BOARD_CHOICES = BOARD_CHOICES
+    STREAM_CHOICES = [
+        ('science', 'Science'),
+        ('commerce', 'Commerce'),
+        ('arts', 'Arts'),
+    ]
+    GRADE_CHOICES = [(g, f'Class {g}') for g in range(1, 13)]
+
     title = models.CharField(max_length=200)
     slug = models.SlugField(unique=True, blank=True)
-    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='test_series')
+    # Used by the public "All Test Series" filters
+    board = models.CharField(max_length=10, choices=BOARD_CHOICES, blank=True, db_index=True)
+    grade = models.PositiveSmallIntegerField(choices=GRADE_CHOICES, null=True, blank=True, db_index=True)
+    stream = models.CharField(max_length=10, choices=STREAM_CHOICES, blank=True, help_text="Only for Class 11-12.")
+    exam = models.CharField(
+        max_length=100, blank=True, db_index=True,
+        help_text="Competitive exam this series prepares for; matches an 'Explore Exams' category name (e.g. SSC CGL).",
+    )
     description = models.TextField()
     thumbnail = models.ImageField(upload_to='test_series/', blank=True, null=True)
     
@@ -60,6 +76,13 @@ class TestSeries(models.Model):
             self.slug = slugify(self.title)
         super().save(*args, **kwargs)
         
+    @property
+    def subjects(self):
+        """Subjects covered by the questions in this series' active tests."""
+        return Subject.objects.filter(
+            question__test__test_series=self, question__test__is_active=True
+        ).distinct().order_by('name')
+
     def update_stats(self):
         """Update test series statistics"""
         tests = self.tests.filter(is_active=True)
@@ -102,6 +125,29 @@ class Test(models.Model):
     show_result_immediately = models.BooleanField(default=True)
     allow_review = models.BooleanField(default=True)
     max_attempts = models.PositiveIntegerField(default=1)
+    is_demo = models.BooleanField(
+        default=False,
+        help_text="Free demo test: anyone logged in can take it without buying the series.",
+    )
+    PAPER_TYPES = [
+        ('mock', 'Full mock test'),
+        ('subject', 'Subject test'),
+        ('pyp', 'Previous year paper'),
+    ]
+    paper_type = models.CharField(max_length=10, choices=PAPER_TYPES, default='mock', db_index=True)
+    exam_year = models.PositiveSmallIntegerField(
+        null=True, blank=True,
+        help_text="For an actual previous year paper, the year it was set. Leave blank for pattern-based papers.",
+    )
+    CALCULATOR_CHOICES = [
+        ('none', 'Not allowed'),
+        ('basic', 'Basic calculator'),
+        ('scientific', 'Scientific calculator'),
+    ]
+    calculator = models.CharField(
+        max_length=10, choices=CALCULATOR_CHOICES, default='none',
+        help_text="On-screen calculator shown during the test, as the real exam allows (e.g. GATE: scientific, CAT: basic).",
+    )
     
     # Scheduling
     start_time = models.DateTimeField(blank=True, null=True)

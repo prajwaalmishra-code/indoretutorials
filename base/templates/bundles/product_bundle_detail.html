@@ -22,7 +22,7 @@
 
         body {
             font-family: var(--font-sans);
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #14141b 0%, #2c2c38 100%);
             color: #1a1a2e;
             line-height: 1.5;
             min-height: 100vh;
@@ -36,7 +36,7 @@
             left: 16px;
             z-index: 1000;
             background: #ffffff;
-            border: 2px solid rgba(102, 126, 234, 0.3);
+            border: 2px solid rgba(252, 188, 0, 0.45);
             border-radius: 10px;
             padding: 10px 20px;
             display: flex;
@@ -46,17 +46,17 @@
             transition: all 0.3s ease;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
             text-decoration: none;
-            color: #667eea;
+            color: #14141b;
             font-weight: 600;
             font-size: 14px;
         }
 
         .back-button:hover {
-            background: #667eea;
+            background: #14141b;
             color: white;
-            border-color: #667eea;
+            border-color: #14141b;
             transform: translateX(-3px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 4px 12px rgba(20, 20, 27, 0.25);
         }
 
         .back-button i {
@@ -217,7 +217,7 @@
         .new-price {
             font-size: 32px;
             font-weight: 800;
-            background: linear-gradient(135deg, #667eea, #764ba2);
+            background: linear-gradient(135deg, #14141b, #2c2c38);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -239,7 +239,7 @@
         .cta-button {
             width: 100%;
             padding: 12px 24px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
+            background: linear-gradient(135deg, #14141b, #2c2c38);
             color: white;
             border: none;
             border-radius: 12px;
@@ -248,7 +248,7 @@
             cursor: pointer;
             transition: all 0.3s ease;
             margin-top: 20px;
-            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 8px 24px rgba(20, 20, 27, 0.3);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -257,7 +257,7 @@
 
         .cta-button:hover {
             transform: translateY(-2px);
-            box-shadow: 0 12px 32px rgba(102, 126, 234, 0.5);
+            box-shadow: 0 12px 32px rgba(20, 20, 27, 0.4);
         }
 
         .cta-button:disabled {
@@ -412,7 +412,7 @@
 
         .section-title i {
             font-size: 24px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
+            background: linear-gradient(135deg, #14141b, #2c2c38);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -437,13 +437,13 @@
             align-items: flex-start;
             gap: 10px;
             padding: 12px;
-            background: rgba(102, 126, 234, 0.05);
+            background: rgba(252, 188, 0, 0.08);
             border-radius: 10px;
             transition: all 0.3s ease;
         }
 
         .feature-item:hover {
-            background: rgba(102, 126, 234, 0.1);
+            background: rgba(252, 188, 0, 0.16);
             transform: translateX(3px);
         }
 
@@ -539,7 +539,7 @@
         }
 
         .product-badge {
-            background: linear-gradient(135deg, #667eea, #764ba2);
+            background: linear-gradient(135deg, #14141b, #2c2c38);
             color: white;
             padding: 5px 12px;
             border-radius: 6px;
@@ -559,7 +559,7 @@
         }
 
         .product-link:hover {
-            background: linear-gradient(135deg, #667eea, #764ba2);
+            background: linear-gradient(135deg, #14141b, #2c2c38);
             color: white;
             transform: translateX(2px);
         }
@@ -599,7 +599,7 @@
 
         .info-item i {
             font-size: 18px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
+            background: linear-gradient(135deg, #14141b, #2c2c38);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -659,7 +659,7 @@
         .sidebar-price {
             font-size: 28px;
             font-weight: 800;
-            background: linear-gradient(135deg, #667eea, #764ba2);
+            background: linear-gradient(135deg, #14141b, #2c2c38);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -680,10 +680,10 @@
         }
 
         /* Color Variants */
-        .badge-video { background: linear-gradient(135deg, #667eea, #764ba2); }
+        .badge-video { background: linear-gradient(135deg, #14141b, #2c2c38); }
         .badge-live { background: linear-gradient(135deg, #10b981, #059669); }
         .badge-test { background: linear-gradient(135deg, #f59e0b, #d97706); }
-        .badge-library { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+        .badge-library { background: linear-gradient(135deg, #0d9488, #0f766e); }
 
         /* Responsive */
         @media (max-width: 1024px) {
@@ -918,7 +918,7 @@
                                 {% if course.thumbnail %}
                                 <div class="product-image" style="background-image: url('{{ course.thumbnail.url }}');"></div>
                                 {% else %}
-                                <div class="product-image" style="background: linear-gradient(135deg, #667eea, #764ba2);"></div>
+                                <div class="product-image" style="background: linear-gradient(135deg, #14141b, #2c2c38);"></div>
                                 {% endif %}
                                 <div class="product-body">
                                     <h4 class="product-title">{{ course.name }}</h4>
@@ -1001,7 +1001,7 @@
                                 {% if elibrary.cover_image %}
                                 <div class="product-image" style="background-image: url('{{ elibrary.cover_image.url }}');"></div>
                                 {% else %}
-                                <div class="product-image" style="background: linear-gradient(135deg, #3b82f6, #2563eb);"></div>
+                                <div class="product-image" style="background: linear-gradient(135deg, #0d9488, #0f766e);"></div>
                                 {% endif %}
                                 <div class="product-body">
                                     <h4 class="product-title">{{ elibrary.title }}</h4>
@@ -1222,7 +1222,7 @@
                     contact: data.user_phone || ''
                 },
                 theme: {
-                    color: "#667eea"
+                    color: "#14141b"
                 },
                 handler: function(response) {
                     handlePaymentSuccess(response);

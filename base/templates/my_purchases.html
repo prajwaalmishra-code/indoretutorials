@@ -111,7 +111,7 @@
         flex: 1;
         padding: 12px;
         background: var(--brand-primary);
-        color: white;
+        color: var(--brand-on-primary, #14141b);
         text-align: center;
         text-decoration: none;
         border-radius: 8px;
@@ -149,7 +149,7 @@
     .price-paid {
         font-size: 20px;
         font-weight: 700;
-        color: var(--brand-primary);
+        color: var(--brand-primary-text);
         margin-top: 8px;
         margin-bottom: 5px;
     }
@@ -186,7 +186,7 @@
 
     .empty-state-icon-wrap i {
         font-size: 44px;
-        color: var(--brand-primary);
+        color: var(--brand-primary-text);
     }
 
     .empty-state-card h2 {
@@ -224,7 +224,7 @@
     }
 
     .feature-pill i {
-        color: var(--brand-primary);
+        color: var(--brand-primary-text);
         font-size: 14px;
     }
 
@@ -234,7 +234,7 @@
         gap: 10px;
         padding: 15px 36px;
         background: var(--brand-primary);
-        color: #fff;
+        color: var(--brand-on-primary, #14141b);
         text-decoration: none;
         border-radius: 10px;
         font-size: 16px;
@@ -247,7 +247,7 @@
         background: var(--brand-primary-dark);
         transform: translateY(-2px);
         box-shadow: 0 8px 24px rgba(var(--brand-primary-rgb),0.35);
-        color: #fff;
+        color: var(--brand-on-primary, #14141b);
         text-decoration: none;
     }
 
@@ -267,7 +267,7 @@
     }
 
     .empty-state-help a {
-        color: var(--brand-primary);
+        color: var(--brand-primary-text);
         text-decoration: none;
         font-weight: 600;
     }
@@ -319,7 +319,7 @@
             {% if item.course.thumbnail %}
                 <img src="{{ item.course.thumbnail.url }}" alt="{{ item.course.name }}" class="purchase-thumbnail">
             {% else %}
-                <div class="purchase-thumbnail" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);"></div>
+                <div class="purchase-thumbnail" style="background: linear-gradient(135deg, #14141b 0%, #2c2c38 100%);"></div>
             {% endif %}
             <div class="purchase-content">
                 <span class="purchase-type-badge badge-video">Video Course</span>
@@ -343,7 +343,7 @@
                 {% endif %}
                 {% if item.expires_at %}
                 <div class="expires-warning">
-                    <i class="fa fa-clock-o"></i> Expires: {{ item.expires_at|date:"d M, Y" }}
+                    <i class="fa fa-clock"></i> Expires: {{ item.expires_at|date:"d M, Y" }}
                 </div>
                 {% endif %}
                 <div class="purchase-actions">
@@ -395,7 +395,7 @@
                 {% endif %}
                 {% if item.expires_at %}
                 <div class="expires-warning">
-                    <i class="fa fa-clock-o"></i> Expires: {{ item.expires_at|date:"d M, Y" }}
+                    <i class="fa fa-clock"></i> Expires: {{ item.expires_at|date:"d M, Y" }}
                 </div>
                 {% endif %}
                 <div class="purchase-actions">
@@ -441,7 +441,7 @@
                 {% endif %}
                 {% if item.expires_at %}
                 <div class="expires-warning">
-                    <i class="fa fa-clock-o"></i> Expires: {{ item.expires_at|date:"d M, Y" }}
+                    <i class="fa fa-clock"></i> Expires: {{ item.expires_at|date:"d M, Y" }}
                 </div>
                 {% endif %}
                 <div class="purchase-actions">
@@ -483,7 +483,7 @@
                 <div class="price-paid">₹{{ item.course.current_price|floatformat:2 }}</div>
                 {% if item.expires_at %}
                 <div class="expires-warning">
-                    <i class="fa fa-clock-o"></i> Expires: {{ item.expires_at|date:"d M, Y" }}
+                    <i class="fa fa-clock"></i> Expires: {{ item.expires_at|date:"d M, Y" }}
                 </div>
                 {% endif %}
                 <div class="purchase-actions">
@@ -535,7 +535,7 @@
                 {% endif %}
                 {% if item.expires_at %}
                 <div class="expires-warning">
-                    <i class="fa fa-clock-o"></i> Expires: {{ item.expires_at|date:"d M, Y" }}
+                    <i class="fa fa-clock"></i> Expires: {{ item.expires_at|date:"d M, Y" }}
                 </div>
                 {% endif %}
                 <div class="purchase-actions">

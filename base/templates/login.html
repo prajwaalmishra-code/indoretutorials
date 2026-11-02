@@ -106,14 +106,14 @@
 .resend-link {
   background: transparent;
   border: none;
-  color: var(--brand-primary);
+  color: var(--brand-primary-text);
   cursor: pointer;
   padding: 10px;
   text-decoration: underline;
 }
 
 .resend-link:hover {
-  color: var(--brand-primary-dark);
+  color: var(--brand-primary-text);
 }
 
 .resend-link:disabled {
@@ -263,6 +263,16 @@
     max-height: none;
     overflow-y: visible;
   }
+
+  /* Image is now a compact banner above the form instead of a full side panel */
+  .auth-image-overlay {
+    padding: 14px 16px;
+  }
+
+  .auth-image-quote {
+    font-size: 0.85rem;
+    line-height: 1.3;
+  }
 }
 </style>
 
@@ -348,7 +358,14 @@
     </div>
     
 <div class="login-image" aria-hidden="true">
-  <img src="{% if auth_settings.login_image %}{{ auth_settings.login_image.url }}{% else %}{% static 'img/loginformimg.jpg' %}{% endif %}" alt="Login illustration">
+  <picture>
+    {% if auth_settings.login_image_mobile %}
+      <source media="(max-width: 960px)" srcset="{{ auth_settings.login_image_mobile.url }}">
+    {% elif not auth_settings.login_image %}
+      <source media="(max-width: 960px)" srcset="{% static 'img/brand/auth-login-mobile.webp' %}">
+    {% endif %}
+    <img src="{% if auth_settings.login_image %}{{ auth_settings.login_image.url }}{% else %}{% static 'img/loginformimg.jpg' %}{% endif %}" alt="Login illustration">
+  </picture>
   <div class="auth-image-overlay">
     <div class="auth-image-quote">"Learning today, leading tomorrow."</div>
   </div>

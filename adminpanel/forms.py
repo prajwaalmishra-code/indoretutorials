@@ -538,10 +538,12 @@ class ThemeSettingsForm(forms.ModelForm):
 class AuthPageSettingsForm(forms.ModelForm):
     class Meta:
         model = AuthPageSettings
-        fields = ['login_image', 'signup_image']
+        fields = ['login_image', 'signup_image', 'login_image_mobile', 'signup_image_mobile']
         widgets = {
             'login_image': forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
             'signup_image': forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
+            'login_image_mobile': forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
+            'signup_image_mobile': forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
         }
 
 

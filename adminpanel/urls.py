@@ -94,6 +94,11 @@ urlpatterns = [
     path('extra-pages/delete/<int:pk>/', views.extra_page_delete, name='extra_page_delete'),
     path('extra-pages/toggle/<int:pk>/', views.extra_page_toggle_status, name='extra_page_toggle_status'),
 
+    # Contact Us lead submissions
+    path('contact-submissions/', views.contact_submission_list, name='contact_submission_list'),
+    path('contact-submissions/<int:pk>/mark-read/', views.contact_submission_mark_read, name='contact_submission_mark_read'),
+    path('contact-submissions/<int:pk>/delete/', views.contact_submission_delete, name='contact_submission_delete'),
+
     # Category Management URLs
     path('categories/', views.manage_categories, name='manage_categories'),
     path('categories/create/', views.create_category, name='create_category'),

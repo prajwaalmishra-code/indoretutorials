@@ -35,6 +35,7 @@ urlpatterns = [
     path("live-class/<int:pk>/", views.live_class_detail, name="live_class_detail"),
     
     # Test Series - Frontend URLs
+    path('test-series/', views.all_test_series, name='all_test_series'),
     path('exam-series/<int:pk>/', views.test_series_detail, name='front_exam_series_detail'),
     path('exam/<int:test_id>/start/', views.start_test, name='front_exam_start'),
     path('exam/session/<uuid:attempt_id>/', views.take_test, name='front_exam_session'),
@@ -59,14 +60,16 @@ urlpatterns = [
     #Payment URLs
     path('payment/create/<str:course_type>/<int:course_id>/',views.create_payment_order, name='create_payment_order'),
     path('payment/handler/', views.payment_handler,name='payment_handler'),
+    path('api/tutor/', views.tutor_chat, name='tutor_chat'),
     path('my_purchases/', views.my_purchases, name='my_purchases'),
+    path('my_results/', views.my_test_results, name='my_test_results'),
 
     # Notifications
 
 
 path('notifications/', views.notifications_list, name='notifications_list'),
-path('notifications/<int:notification_id>/read/', views.mark_notification_read, name='mark_notification_read'),
-path('notifications/<int:notification_id>/delete/', views.delete_notification, name='delete_notification'),
+path('notifications/<str:notification_id>/read/', views.mark_notification_read, name='mark_notification_read'),
+path('notifications/<str:notification_id>/delete/', views.delete_notification, name='delete_notification'),
 path('notifications/mark-all-read/', views.mark_all_notifications_read, name='mark_all_notifications_read'),
 path('notifications/clear-all/', views.clear_all_notifications, name='clear_all_notifications'),
 
@@ -75,4 +78,5 @@ path('notifications/clear-all/', views.clear_all_notifications, name='clear_all_
     path('offline/', views.offline, name='offline'),
     path('page/<slug:slug>/', views.extra_page_detail, name='extra_page_detail'),
     path('serviceworker.js', views.service_worker, name='service-worker'),
+    path('contact/submit/', views.contact_submit, name='contact_submit'),
 ]

@@ -15,7 +15,7 @@
 }
 .section-header h2, .live-header h2 {
   font-size: 2rem;
-  color: var(--brand-primary);
+  color: var(--brand-ink, #14141b);
   margin-bottom: 0;
   font-weight: 700;
   margin-top: 0;
@@ -32,8 +32,8 @@
 }
 .course-tabs .tab, .live-tabs .tab {
   padding: 5px 18px;
-  background: #fde8ec;
-  color: var(--brand-primary);
+  background: #fff4d1;
+  color: var(--brand-primary-text);
   border: none;
   border-radius: 22px;
   font-size: 1rem;
@@ -45,7 +45,7 @@
 .course-tabs .tab.active, .course-tabs .tab:hover,
 .live-tabs .tab.active, .live-tabs .tab:hover {
   background: var(--brand-primary);
-  color: #fff;
+  color: var(--brand-on-primary, #14141b);
 }
 .scroll-row-outer {
   padding-left: 20px;
@@ -66,13 +66,13 @@
 .slide-arrow2 {
   position: absolute; top: 50%; transform: translateY(-50%);
   background: #fff; border: 1.5px solid #e8e8e8; z-index: 10;
-  width: 39px; height: 39px; color: var(--brand-primary); font-size: 1.65em; border-radius: 50%;
+  width: 39px; height: 39px; color: var(--brand-primary-text); font-size: 1.65em; border-radius: 50%;
   display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 7px #e7eafc;
   opacity: 0.87; transition: background .17s,color .15s, opacity .18s; user-select: none; cursor: pointer;
 }
 .slide-arrow2.left { left: -54px; }
 .slide-arrow2.right { right: -54px; }
-.slide-arrow2:hover { background: #fde8ec; color: #8a121e; opacity:1; }
+.slide-arrow2:hover { background: rgba(var(--brand-primary-rgb), .16); color: var(--brand-primary-text); opacity:1; }
 .course-card, .live-card {
   flex: 0 0 220px;
   max-width: 240px;
@@ -126,7 +126,7 @@
 .course-pricing, .live-pricing {
   margin: 4px 0;
   font-size: 1.02rem;
-  color: var(--brand-primary);
+  color: var(--brand-primary-text);
   font-weight: 700;
 }
 .rupee { font-weight: 700; font-size: 1.08em; }
@@ -151,7 +151,7 @@
 }
 .badge-premium { background: #8246ef; color: #fff; }
 .badge-bestseller { background: #ffe4b3; color: #ba7b00; border: 1px solid #ffd88a; }
-.badge-live { background: var(--brand-primary); color: #fff; }
+.badge-live { background: var(--brand-primary); color: var(--brand-on-primary, #14141b); }
 .badge-upcoming { background: #e9db2f; color: #4a4631; }
 .badge-featured { background: #4aad65; color: #fff; }
 
@@ -398,7 +398,7 @@ select[name="gender"]:focus {
 }
 
 .forgot-password {
-  color: var(--brand-primary);
+  color: var(--brand-primary-text);
   text-decoration: none;
   font-size: 14px;
   font-weight: 600;
@@ -406,7 +406,7 @@ select[name="gender"]:focus {
 }
 
 .forgot-password:hover {
-  color: var(--brand-primary-dark);
+  color: var(--brand-primary-text);
   text-decoration: underline;
 }
 
@@ -415,7 +415,7 @@ select[name="gender"]:focus {
   width: 100%;
   padding: 14px 20px;
   background: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-primary-dark) 100%);
-  color: #fff;
+  color: var(--brand-on-primary, #14141b);
   border: none;
   border-radius: 8px;
   font-size: 16px;
@@ -473,7 +473,7 @@ select[name="gender"]:focus {
 .resend-link {
   background: none;
   border: none;
-  color: var(--brand-primary);
+  color: var(--brand-primary-text);
   text-decoration: none;
   cursor: pointer;
   padding: 10px 0;
@@ -487,7 +487,7 @@ select[name="gender"]:focus {
 }
 
 .resend-link:hover {
-  color: var(--brand-primary-dark);
+  color: var(--brand-primary-text);
   text-decoration: underline;
 }
 
@@ -535,14 +535,14 @@ select[name="gender"]:focus {
 }
 
 .login-signup a {
-  color: var(--brand-primary);
+  color: var(--brand-primary-text);
   text-decoration: none;
   font-weight: 600;
   transition: color 0.2s;
 }
 
 .login-signup a:hover {
-  color: var(--brand-primary-dark);
+  color: var(--brand-primary-text);
   text-decoration: underline;
 }
 
@@ -552,6 +552,11 @@ select[name="gender"]:focus {
   height: 100%;
   min-height: 100%;
   background: #fff;
+}
+
+.login-image picture {
+  display: block;
+  height: 100%;
 }
 
 .login-image img {
@@ -699,10 +704,15 @@ select[name="gender"]:focus {
   .login-image {
     height: 280px;
   }
+  /* The wide mobile artwork carries its own headline, so drop the quote overlay */
+  .auth-image-overlay {
+    display: none;
+  }
 }
 
 @media (max-width: 768px) {
   .login-background {
+    min-height: 0;
     align-items: flex-start;
     padding: 16px;
   }
@@ -723,10 +733,16 @@ select[name="gender"]:focus {
     padding: 24px 20px;
     width: 100%;
     box-sizing: border-box;
+    order: 2;
   }
 
+  /* Show the side image as a banner above the form instead of hiding it */
   .login-image {
-    display: none;
+    display: block;
+    order: 1;
+    height: 160px;
+    min-height: 160px;
+    border-radius: 22px 22px 0 0;
   }
 
   .modal-content {

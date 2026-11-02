@@ -8,7 +8,7 @@ from django.core.cache import cache
 from django.core.mail import send_mail
 from django.contrib.staticfiles import finders
 from django.db import transaction
-from django.db.models import Count, Sum, Prefetch, Q, Avg, F
+from django.db.models import Count, Sum, Prefetch, Q, Avg, F, Max, Min
 from django.core.exceptions import PermissionDenied
 from django.core import signing
 from django.http import (
@@ -21,9 +21,10 @@ from django.http import (
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.cache import cache_control
 from django.views.decorators.csrf import csrf_exempt, csrf_protect
-from django.views.decorators.http import require_http_methods, require_GET
+from django.views.decorators.http import require_http_methods, require_GET, require_POST
 
 # ==================== THIRD PARTY IMPORTS ====================
 import razorpay
@@ -37,13 +38,16 @@ from .forms import (
     OTPVerificationForm
 )
 
-from .models import User, OTPVerification, UserCourseAccess, Payment
+from .models import User, OTPVerification, UserCourseAccess, Payment, Notification as UserNotification
 
 from .utils import has_smtp_configured, create_and_send_otp
 
 from video_courses.models import VideoCourse, Category
 from live_class.models import LiveClassCourse, LiveClassSession
-from testseries.models import TestSeries, Test, TestAttempt, StudentAnswer
+from testseries.models import TestSeries, Test, TestAttempt, StudentAnswer, Subject, Question
+from testseries.boards import CATEGORY_BOARD_CODES, STATE_BOARDS
+from testseries.exam_tools import EXAM_GROUPS
+from django.core.paginator import Paginator
 
 from elibrary.models import (
     ELibraryCourse,
@@ -58,11 +62,14 @@ from adminpanel.models import (
     UserCoupon,
     SMTPConfiguration,
     RazorpayConfiguration,
-    Notification as AdminNotification
+    Notification as AdminNotification,
+    ContactSubmission,
 )
 
 # ==================== OTHER IMPORTS ====================
 import json
+import requests
+from urllib.parse import quote
 import os
 import secrets
 import string
@@ -227,6 +234,26 @@ def extra_page_detail(request, slug):
     return render(request, 'extra_page_detail.html', {'page': page})
 
 
+@require_POST
+def contact_submit(request):
+    """Handle the homepage 'Contact Us' lead form."""
+    name = request.POST.get('name', '').strip()
+    email = request.POST.get('email', '').strip()
+    phone = request.POST.get('phone', '').strip()
+    subject = request.POST.get('subject', '').strip()
+    message_text = request.POST.get('message', '').strip()
+
+    if not name or not email or not message_text:
+        messages.error(request, 'Please fill in your name, email and message.')
+        return redirect(f"{reverse('home')}#contact-us")
+
+    ContactSubmission.objects.create(
+        name=name, email=email, phone=phone, subject=subject, message=message_text
+    )
+    messages.success(request, "Thanks for reaching out! We'll get back to you soon.")
+    return redirect(f"{reverse('home')}#contact-us")
+
+
 #notifications views 
 @login_required
 def notifications_list(request):
@@ -255,11 +282,21 @@ def notifications_list(request):
     
     # === ADMIN BROADCAST NOTIFICATIONS ===
     # Get active admin notifications that are scheduled to show
-    admin_notifications = AdminNotification.objects.filter(
+    admin_notifications_qs = AdminNotification.objects.filter(
         is_active=True,
         scheduled_time__lte=timezone.now()
-    ).order_by('-scheduled_time')[:10]
-    
+    )
+    if not show_read:
+        admin_notifications_qs = admin_notifications_qs.exclude(read_by=request.user)
+    admin_notifications = list(admin_notifications_qs.order_by('-scheduled_time')[:10])
+
+    # IDs this user has already read, so is_read can be reported per-user
+    read_admin_ids = set(
+        AdminNotification.objects.filter(
+            is_active=True, scheduled_time__lte=timezone.now(), read_by=request.user
+        ).values_list('id', flat=True)
+    )
+
     # === CALCULATE UNREAD COUNT ===
     # Count user-specific unread notifications
     user_unread_count = request.user.notifications.filter(
@@ -267,10 +304,13 @@ def notifications_list(request):
     ).exclude(
         expires_at__lt=timezone.now()
     ).count()
-    
-    # Count active admin notifications (always considered "unread")
-    admin_unread_count = admin_notifications.count()
-    
+
+    # Count admin notifications this user hasn't read yet
+    admin_unread_count = AdminNotification.objects.filter(
+        is_active=True,
+        scheduled_time__lte=timezone.now()
+    ).exclude(read_by=request.user).count()
+
     # Total unread count (user notifications + admin notifications)
     total_unread_count = user_unread_count + admin_unread_count
     
@@ -299,7 +339,7 @@ def notifications_list(request):
             'title': notification.title,
             'message': notification.body,
             'link': notification.link or '#',
-            'is_read': False,  # Admin notifications are always shown as new
+            'is_read': notification.id in read_admin_ids,
             'created_at': notification.scheduled_time.strftime('%b %d, %Y at %I:%M %p'),
             'type': 'announcement',  # Set type as announcement
             'priority': 'high',
@@ -326,68 +366,67 @@ def notifications_list(request):
 
 @login_required
 def mark_notification_read(request, notification_id):
-    """Mark a user-specific notification as read"""
+    """Mark a user-specific or admin broadcast notification as read"""
     if request.method == 'POST':
         try:
-            # Check if it's an admin notification (can't mark as read)
             if str(notification_id).startswith('admin_'):
-                return JsonResponse({
-                    'status': 'info',
-                    'message': 'Admin notifications cannot be marked as read'
-                })
-            
-            notification = get_object_or_404(
-                UserNotification, 
-                id=notification_id, 
-                user=request.user
-            )
-            notification.mark_as_read()
-            
+                admin_id = str(notification_id).split('_', 1)[1]
+                admin_notification = get_object_or_404(AdminNotification, id=admin_id)
+                admin_notification.read_by.add(request.user)
+            else:
+                notification = get_object_or_404(
+                    UserNotification,
+                    id=notification_id,
+                    user=request.user
+                )
+                notification.mark_as_read()
+
             # Recalculate total unread count
             user_unread = request.user.notifications.filter(
                 is_read=False
             ).exclude(
                 expires_at__lt=timezone.now()
             ).count()
-            
-            # Count active admin notifications
+
+            # Count admin notifications this user hasn't read yet
             admin_unread = AdminNotification.objects.filter(
                 is_active=True,
                 scheduled_time__lte=timezone.now()
-            ).count()
-            
+            ).exclude(read_by=request.user).count()
+
             total_unread = user_unread + admin_unread
-            
+
             return JsonResponse({
                 'status': 'success',
                 'unread_count': total_unread
             })
         except Exception as e:
             return JsonResponse({
-                'status': 'error', 
+                'status': 'error',
                 'message': str(e)
             }, status=400)
-    
+
     return JsonResponse({
-        'status': 'error', 
+        'status': 'error',
         'message': 'Invalid request'
     }, status=400)
 
 @login_required
 def mark_all_notifications_read(request):
-    """Mark all user-specific notifications as read"""
+    """Mark all user-specific and currently visible admin broadcast notifications as read"""
     if request.method == 'POST':
         request.user.notifications.filter(is_read=False).update(is_read=True)
-        
-        # Count remaining admin notifications for badge
-        admin_unread = AdminNotification.objects.filter(
+
+        active_admin_notifications = AdminNotification.objects.filter(
             is_active=True,
             scheduled_time__lte=timezone.now()
-        ).count()
-        
+        ).exclude(read_by=request.user)
+        for notification in active_admin_notifications:
+            notification.read_by.add(request.user)
+
         return JsonResponse({
-            'status': 'success', 
-            'unread_count': admin_unread  # Only admin notifications remain "unread"
+            'status': 'success',
+            'unread_count': 0
         })
     
     return JsonResponse({
@@ -413,34 +452,34 @@ def delete_notification(request, notification_id):
                 user=request.user
             )
             notification.delete()
-            
+
             # Recalculate total unread count
             user_unread = request.user.notifications.filter(
                 is_read=False
             ).exclude(
                 expires_at__lt=timezone.now()
             ).count()
-            
-            # Count active admin notifications
+
+            # Count admin notifications this user hasn't read yet
             admin_unread = AdminNotification.objects.filter(
                 is_active=True,
                 scheduled_time__lte=timezone.now()
-            ).count()
-            
+            ).exclude(read_by=request.user).count()
+
             total_unread = user_unread + admin_unread
-            
+
             return JsonResponse({
                 'status': 'success',
                 'unread_count': total_unread
             })
         except Exception as e:
             return JsonResponse({
-                'status': 'error', 
+                'status': 'error',
                 'message': str(e)
             }, status=400)
-    
+
     return JsonResponse({
-        'status': 'error', 
+        'status': 'error',
         'message': 'Invalid request'
     }, status=400)
 
@@ -449,20 +488,20 @@ def clear_all_notifications(request):
     """Clear all read user notifications"""
     if request.method == 'POST':
         request.user.notifications.filter(is_read=True).delete()
-        
+
         # Recalculate total unread count
         user_unread = request.user.notifications.filter(
             is_read=False
         ).exclude(
             expires_at__lt=timezone.now()
         ).count()
-        
-        # Count active admin notifications
+
+        # Count admin notifications this user hasn't read yet
         admin_unread = AdminNotification.objects.filter(
             is_active=True,
             scheduled_time__lte=timezone.now()
-        ).count()
-        
+        ).exclude(read_by=request.user).count()
+
         total_unread = user_unread + admin_unread
         
         return JsonResponse({
@@ -614,6 +653,167 @@ def my_purchases(request):
     return render(request, 'my_purchases.html', context)
 
 
+@login_required
+def my_test_results(request):
+    """
+    Show every test attempt (submitted or in-progress) for the logged-in student,
+    with their score/result for each one.
+    """
+    attempts = TestAttempt.objects.filter(
+        user=request.user
+    ).select_related('test', 'test__test_series').order_by('-created_at')
+
+    submitted_attempts = attempts.filter(status='submitted')
+    total_attempts = submitted_attempts.count()
+    passed_count = submitted_attempts.filter(passed=True).count()
+    average_percentage = submitted_attempts.aggregate(avg=Avg('percentage_score'))['avg'] or 0
+
+    context = {
+        'attempts': attempts,
+        'total_attempts': total_attempts,
+        'passed_count': passed_count,
+        'average_percentage': average_percentage,
+    }
+    return render(request, 'my_results.html', context)
+
+
+SCHOOL_BOARD_COLORS = {'cbse': '#2563eb', 'icse': '#7c3aed', 'up': '#ea580c'}
+BOARD_SHORT_NAMES = {'cbse': 'CBSE', 'icse': 'ICSE', 'up': 'UP Board', **{b.code: b.category for b in STATE_BOARDS}}
+
+
+def _apply_series_cover(series_list):
+    """
+    Give each series what its card cover shows when it has no thumbnail:
+    an icon and colour (from its exam's category, or its board) plus kicker/title/subtitle text.
+    """
+    exam_style = {
+        name: (icon or 'file-lines', color or '#667eea')
+        for name, icon, color in Category.objects.filter(
+            name__in={s.exam for s in series_list if s.exam}
+        ).values_list('name', 'icon', 'icon_color')
+    }
+    stream_labels = dict(TestSeries.STREAM_CHOICES)
+    for series in series_list:
+        if series.board:
+            series.icon = 'school'
+            series.color = SCHOOL_BOARD_COLORS.get(series.board, '#0d9488')
+            series.cover_kicker = BOARD_SHORT_NAMES.get(series.board, series.get_board_display())
+            series.cover_title = f"Class {series.grade}" if series.grade else 'Board Exam'
+            series.cover_sub = stream_labels.get(series.stream, '')
+        elif series.exam:
+            series.icon, series.color = exam_style.get(series.exam, ('file-lines', '#667eea'))
+            series.cover_kicker = 'Exam Pattern Mock'
+            series.cover_title = series.exam
+            series.cover_sub = ''
+        else:
+            series.icon, series.color = 'file-lines', '#667eea'
+            series.cover_kicker = 'Test Series'
+            series.cover_title = series.title
+            series.cover_sub = ''
+
+
+def _series_cards(queryset, user):
+    """Test series ready for the shared card: paid-test counts, demo flag, cover, price and purchase status."""
+    series_list = list(queryset.annotate(
+        active_test_count=Count('tests', filter=Q(tests__is_active=True, tests__is_demo=False), distinct=True),
+        active_question_count=Count('tests__questions', filter=Q(tests__is_active=True, tests__is_demo=False), distinct=True),
+        demo_count=Count('tests', filter=Q(tests__is_active=True, tests__is_demo=True), distinct=True),
+    ))
+    purchased = set()
+    if user.is_authenticated:
+        purchased = set(
+            UserCourseAccess.objects.filter(user=user, course_type='test_series', is_active=True)
+            .values_list('course_id', flat=True)
+        )
+    _apply_series_cover(series_list)
+    for series in series_list:
+        series.is_purchased = series.id in purchased
+        series.price_display = "Free" if series.is_free else f"₹{series.price:,.0f}"
+    return series_list
+
+
+def _test_series_directory(purchased_ids):
+    """
+    Every active test series grouped into tabs for the home page directory:
+    CBSE/ICSE/UP Board by class, state boards as a board x class table, then exam groups.
+    """
+    series_list = list(
+        TestSeries.objects.filter(is_active=True)
+        .annotate(
+            active_test_count=Count('tests', filter=Q(tests__is_active=True, tests__is_demo=False), distinct=True),
+            active_question_count=Count('tests__questions', filter=Q(tests__is_active=True, tests__is_demo=False), distinct=True),
+        )
+        .only('id', 'title', 'board', 'grade', 'stream', 'exam', 'is_free', 'price', 'difficulty')
+        .order_by('grade', 'stream', 'title')
+    )
+    if not series_list:
+        return []
+
+    _apply_series_cover(series_list)
+    board_labels = dict(TestSeries.BOARD_CHOICES)
+    for series in series_list:
+        series.is_purchased = series.id in purchased_ids
+        series.price_display = "Free" if series.is_free else f"₹{series.price:,.0f}"
+
+    tabs = []
+
+    # CBSE, ICSE and UP Board: one row of class boxes per board.
+    main_sections = []
+    for code in ('cbse', 'icse', 'up'):
+        items = [s for s in series_list if s.board == code]
+        if items:
+            main_sections.append({
+                'title': board_labels[code],
+                'color': SCHOOL_BOARD_COLORS[code],
+                'url': f"{reverse('all_test_series')}?board={code}",
+                'items': items,
+            })
+    if main_sections:
+        tabs.append({
+            'key': 'school', 'label': 'CBSE, ICSE & UP', 'icon': 'school', 'layout': 'boards',
+            'sections': main_sections, 'count': sum(len(s['items']) for s in main_sections),
+        })
+
+    # Every other board: one table row per board, one cell per class.
+    state_rows = {}
+    for series in series_list:
+        if series.board and series.board not in SCHOOL_BOARD_COLORS:
+            state_rows.setdefault(series.board, []).append(series)
+    if state_rows:
+        board_order = [code for code, _ in TestSeries.BOARD_CHOICES]
+        rows = [
+            {
+                'title': board_labels.get(code, code),
+                'url': f"{reverse('all_test_series')}?board={code}",
+                'items': state_rows[code],
+            }
+            for code in sorted(state_rows, key=board_order.index)
+        ]
+        tabs.append({
+            'key': 'state', 'label': 'State Boards', 'icon': 'book-open-reader', 'layout': 'table',
+            'rows': rows, 'count': sum(len(r['items']) for r in rows),
+        })
+
+    # Competitive exams, in the order EXAM_GROUPS lists them.
+    by_exam = {}
+    for series in series_list:
+        if not series.board and series.exam:
+            by_exam.setdefault(series.exam, []).append(series)
+    grouped = set()
+    for key, label, icon, exams in EXAM_GROUPS:
+        items = [s for exam in exams for s in by_exam.get(exam, [])]
+        grouped.update(exams)
+        if items:
+            tabs.append({'key': key, 'label': label, 'icon': icon, 'layout': 'grid', 'items': items, 'count': len(items)})
+
+    others = [
+        s for s in series_list
+        if not s.board and (not s.exam or s.exam not in grouped)
+    ]
+    if others:
+        tabs.append({'key': 'more', 'label': 'More', 'icon': 'layer-group', 'layout': 'grid', 'items': others, 'count': len(others)})
+
+    return tabs
 
 
 def home(request):
@@ -742,7 +942,6 @@ def home(request):
                 to_attr='active_tests_list'
             )
         )
-        .select_related('category')
         .order_by('-created_at')[:10]
     )
     
@@ -760,20 +959,20 @@ def home(request):
         )
 
     for series in test_series:
-        series.total_tests = len(series.active_tests_list)
-        series.total_questions = sum(
-            test.question_count for test in series.active_tests_list
-        )
-        series.total_marks = sum(
-            test.total_marks_sum or 0 for test in series.active_tests_list
-        )
-        series.free_tests = sum(
-            1 for test in series.active_tests_list if series.is_free
+        # Demo tests repeat paid questions, so they count as free tests but not towards the totals.
+        paid = [test for test in series.active_tests_list if not test.is_demo]
+        series.total_tests = len(paid)
+        series.total_questions = sum(test.question_count for test in paid)
+        series.total_marks = sum(test.total_marks_sum or 0 for test in paid)
+        series.free_tests = (
+            len(series.active_tests_list) if series.is_free
+            else len(series.active_tests_list) - len(paid)
         )
         series.user_count = 0
-        series.price_display = "FREE" if series.is_free else f"₹{series.price:.2f}"
+        series.price_display = "FREE" if series.is_free else f"₹{series.price:,.0f}"
         # Check if user has purchased this test series
         series.is_purchased = series.id in purchased_test_series_ids
+    _apply_series_cover(test_series)
 
         
     elibrary_courses = list(
@@ -866,6 +1065,7 @@ def home(request):
         'live_classes': live_classes,
         'video_courses': video_courses,
         'test_series': test_series,
+        'test_series_directory': _test_series_directory(purchased_test_series_ids),
         'featured_courses': elibrary_courses,
         'product_bundles': product_bundles,
         'now': now,
@@ -979,94 +1179,137 @@ def product_bundle_detail(request, slug):
         raise Http404("Bundle not found")
 
 
+def _has_test_series_access(user, series):
+    """Free series, or a live purchase of the series itself or of a bundle that includes it."""
+    if series.is_free:
+        return True
+    if not user.is_authenticated:
+        return False
+    live = UserCourseAccess.objects.filter(user=user, is_active=True).filter(
+        Q(expires_at__isnull=True) | Q(expires_at__gt=timezone.now())
+    )
+    return live.filter(
+        Q(course_type='test_series', course_id=series.pk)
+        | Q(course_type='bundle', course_id__in=series.bundles.values('pk'))
+    ).exists()
+
+
 def test_series_detail(request, pk):
-    """
-    View test series details and tests with purchase status check.
-    Similar to live_class_detail view.
-    """
-    try:
-        # Get test series with related tests
-        test_series = get_object_or_404(TestSeries, pk=pk, is_active=True)
-        tests = test_series.tests.filter(is_active=True).prefetch_related('questions')
-        
-        # Format price displays
-        if test_series.is_free:
-            test_series.original_price_display = "0.00"
-            test_series.current_price_display = "FREE"
-            test_series.show_price_strike = False
-        else:
-            test_series.original_price_display = f"{test_series.price:.2f}"
-            test_series.current_price_display = f"{test_series.price:.2f}"
-            test_series.show_price_strike = False  # Only show strike if you have original_price field
-        
-        # Add stats for each test
-        for test in tests:
-            test.question_count = test.questions.count()
-            test.total_marks = sum(q.marks for q in test.questions.all())
-            
-            # Check if user has attempted this test
-            if request.user.is_authenticated:
-                test.user_attempts = TestAttempt.objects.filter(
-                    user=request.user, 
-                    test=test,
-                    status='submitted'
-                ).count()
-                test.can_attempt = test.user_attempts < test.max_attempts
-                
-                # Get best score if available
-                best_attempt = TestAttempt.objects.filter(
-                    user=request.user,
-                    test=test,
-                    status='submitted'
-                ).order_by('-marks_obtained').first()
-                
-                if best_attempt:
-                    test.best_score = best_attempt.marks_obtained
-                    test.best_percentage = best_attempt.percentage_score
-                else:
-                    test.best_score = None
-                    test.best_percentage = None
-            else:
-                test.user_attempts = 0
-                test.can_attempt = True
-                test.best_score = None
-                test.best_percentage = None
-        
-        # ===== DEFAULT CONTEXT =====
-        context = {
-            'test_series': test_series,
-            'tests': tests,
-            'is_purchased': False,  # Default: user hasn't purchased
-        }
-        
-        # ===== CHECK PURCHASE STATUS FOR AUTHENTICATED USERS =====
-        if request.user.is_authenticated:
-            try:
-                # Check if user has access to this test series
-                access = UserCourseAccess.objects.get(
-                    user=request.user,
-                    course_id=pk,
-                    course_type='test_series'
-                )
-                
-                # Check if access is active
-                if hasattr(access, 'is_active'):
-                    if access.is_active:
-                        context['is_purchased'] = True
-                else:
-                    # If no is_active field, just having the record means purchased
-                    context['is_purchased'] = True
-                    
-            except UserCourseAccess.DoesNotExist:
-                # User hasn't purchased this test series
-                context['is_purchased'] = False
-        
-        return render(request, 'test_series_detail.html', context)
-    
-    except TestSeries.DoesNotExist:
-        raise Http404("Test series not found")
-    except Exception as e:
-        raise Http404(f"Error loading test series: {str(e)}")
+    """Test series page: pattern, syllabus coverage, every test with its marking scheme and the student's attempts."""
+    test_series = get_object_or_404(TestSeries, pk=pk, is_active=True)
+    _apply_series_cover([test_series])
+
+    tests = list(
+        test_series.tests.filter(is_active=True).annotate(
+            q_count=Count('questions'),
+            marks_sum=Sum('questions__marks'),
+            max_penalty=Max('questions__negative_marks'),
+            min_marks=Min('questions__marks'),
+            max_marks=Max('questions__marks'),
+            easy_count=Count('questions', filter=Q(questions__difficulty='easy')),
+            medium_count=Count('questions', filter=Q(questions__difficulty='medium')),
+            hard_count=Count('questions', filter=Q(questions__difficulty='hard')),
+        )
+    )
+
+    # The free demo is listed first, then full mocks, subject tests and previous year papers; paid tests are numbered from 1.
+    type_order = [key for key, _ in Test.PAPER_TYPES]
+    tests.sort(key=lambda t: (not t.is_demo, type_order.index(t.paper_type) if t.paper_type in type_order else 0))
+    has_access = _has_test_series_access(request.user, test_series)
+    paid_tests = [t for t in tests if not t.is_demo]
+    demo_ids = {t.id for t in tests if t.is_demo}
+
+    # Questions and marks per subject, for each test's section list and the series' coverage table.
+    section_rows = (
+        Question.objects.filter(test__in=tests)
+        .values('test_id', 'subject__name', 'subject__color', 'subject__icon')
+        .annotate(questions=Count('id'), marks=Sum('marks'))
+        .order_by('test_id', 'subject__name')
+    )
+    sections_by_test = {}
+    coverage = {}
+    for row in section_rows:
+        name = row['subject__name'] or 'General'
+        sections_by_test.setdefault(row['test_id'], []).append({'name': name, 'questions': row['questions']})
+        if row['test_id'] in demo_ids:
+            continue  # demo questions are copies of paid ones
+        subject = coverage.setdefault(name, {
+            'name': name, 'color': row['subject__color'] or '#6b7280', 'icon': row['subject__icon'],
+            'questions': 0, 'marks': 0, 'tests': 0,
+        })
+        subject['questions'] += row['questions']
+        subject['marks'] += row['marks'] or 0
+        subject['tests'] += 1
+
+    attempts_by_test = {}
+    if request.user.is_authenticated:
+        for attempt in TestAttempt.objects.filter(user=request.user, test__in=tests, status='submitted').order_by('-submitted_at'):
+            attempts_by_test.setdefault(attempt.test_id, []).append(attempt)
+
+    for test in tests:
+        test.question_count = test.q_count
+        test.total_marks = test.marks_sum or 0
+        test.sections = sections_by_test.get(test.id, [])
+        test.penalty = test.max_penalty if test_series.has_negative_marking and test.max_penalty else 0
+        test.marks_range = (
+            f"{test.min_marks:g}" if test.min_marks == test.max_marks else f"{test.min_marks:g}–{test.max_marks:g}"
+        ) if test.question_count else ''
+        test.unlocked = has_access or test.is_demo
+        attempts = attempts_by_test.get(test.id, [])
+        test.user_attempts = len(attempts)
+        test.can_attempt = test.user_attempts < test.max_attempts
+        test.last_attempt = attempts[0] if attempts else None
+        best = max(attempts, key=lambda a: a.marks_obtained) if attempts else None
+        test.best_score = best.marks_obtained if best else None
+        test.best_percentage = best.percentage_score if best else None
+
+    for number, test in enumerate(paid_tests, start=1):
+        test.number = number
+
+    total_questions = sum(t.question_count for t in paid_tests)
+    total_marks = sum(t.total_marks for t in paid_tests)
+    attempted_tests = sum(1 for t in tests if t.user_attempts)
+
+    # The real exam's pattern is kept on its 'Explore Exams' category.
+    exam_category = Category.objects.filter(name=test_series.exam).first() if test_series.exam else None
+
+    related = TestSeries.objects.filter(is_active=True).exclude(pk=test_series.pk)
+    if test_series.board:
+        related = related.filter(board=test_series.board).order_by('grade', 'stream')
+    elif test_series.exam:
+        group = next((exams for _, _, _, exams in EXAM_GROUPS if test_series.exam in exams), [])
+        related = related.filter(exam__in=group)
+    else:
+        related = related.order_by('-created_at')
+    related = list(related[:6])
+    _apply_series_cover(related)
+
+    context = {
+        'test_series': test_series,
+        'tests': tests,
+        'paid_tests': paid_tests,
+        'demo_test': next((t for t in tests if t.is_demo), None),
+        'paper_tabs': [
+            (key, label, count) for key, label in Test.PAPER_TYPES
+            if (count := sum(1 for t in paid_tests if t.paper_type == key))
+        ],
+        'subjects': sorted(coverage.values(), key=lambda s: -s['questions']),
+        'total_questions': total_questions,
+        'total_marks': total_marks,
+        'total_minutes': sum(t.duration_minutes for t in paid_tests),
+        'attempted_tests': attempted_tests,
+        'progress_pct': round(attempted_tests * 100 / len(tests)) if tests else 0,
+        'calculator_tests': [t for t in tests if t.calculator != 'none'],
+        'max_penalty': max((t.penalty for t in tests), default=0),
+        'exam_category': exam_category,
+        'related_series': related,
+        'is_purchased': has_access and not test_series.is_free,
+        'can_take_tests': has_access,
+        'price_display': "Free" if test_series.is_free else f"₹{test_series.price:,.0f}",
+        'back_url': reverse('home'),
+    }
+    return render(request, 'test_series_detail.html', context)
+
 
 @login_required
 def start_test(request, test_id):
@@ -1076,6 +1319,10 @@ def start_test(request, test_id):
     # Check if test is available
     if not test.is_available:
         messages.error(request, 'This test is not currently available.')
+        return redirect('front_exam_series_detail', pk=test.test_series.pk)
+
+    if not test.is_demo and not _has_test_series_access(request.user, test.test_series):
+        messages.warning(request, 'Buy this test series to unlock this test. You can try the free demo test first.')
         return redirect('front_exam_series_detail', pk=test.test_series.pk)
     
     # Check if user can attempt this test
@@ -1143,193 +1390,229 @@ def take_test(request, attempt_id):
     
     # Calculate remaining time
     time_remaining = duration_seconds - int(elapsed_time.total_seconds())
-    
+
+    # Sections follow the order subjects first appear in (as in the real paper)
+    questions = list(questions.select_related('subject') if hasattr(questions, 'select_related') else questions)
+    negative_marking = attempt.test.test_series.has_negative_marking
+    sections = {}
+    for number, question in enumerate(questions, start=1):
+        question.number = number
+        question.section = question.subject.name if question.subject else 'General'
+        question.penalty = question.negative_marks if negative_marking and question.negative_marks else 0
+        section = sections.setdefault(question.section, {'name': question.section, 'numbers': [], 'marks': 0})
+        section['numbers'].append(number)
+        section['marks'] += question.marks
+
     context = {
         'attempt': attempt,
         'test': attempt.test,
+        'series': attempt.test.test_series,
         'questions': questions,
+        'sections': list(sections.values()),
+        'total_marks': sum(q.marks for q in questions),
+        'negative_marking': negative_marking and any(q.penalty for q in questions),
         'time_remaining': max(0, time_remaining),
     }
     return render(request, 'take_test.html', context)
+
+
+def _finalize_test_attempt(attempt, post_data):
+    """Grade a test attempt from submitted answer data and persist the result.
+
+    `post_data` only needs to support .get()/.getlist() (a QueryDict or plain dict).
+    Used both for a normal form submission and for the timeout auto-submit path,
+    where there is no answer data (everything counts as skipped).
+    """
+    # Calculate time spent
+    time_spent = timezone.now() - attempt.started_at
+    attempt.time_spent = time_spent
+    attempt.submitted_at = timezone.now()
+
+    # Initialize counters
+    correct_answers = 0
+    wrong_answers = 0
+    attempted_questions = 0
+    marks_obtained = 0.0
+    subject_wise_score = {}
+
+    # Get all questions for this test
+    questions = attempt.test.questions.all()
+
+    # Process each question
+    for question in questions:
+        answer_key = f'question_{question.id}'
+
+        # Get student's answer from the submitted data
+        if question.question_type == 'mcq_multiple':
+            selected_answer = post_data.getlist(answer_key)
+        else:
+            selected_answer = post_data.get(answer_key, '')
+
+        # Check if answered
+        is_answered = bool(selected_answer) and not (isinstance(selected_answer, list) and len(selected_answer) == 0)
+
+        # Skip if not answered - create empty record
+        if not is_answered:
+            StudentAnswer.objects.create(
+                attempt=attempt,
+                question=question,
+                selected_answer={},
+                is_correct=False,
+                marks_obtained=0,
+                is_attempted=False
+            )
+            continue
+
+        attempted_questions += 1
+
+        # Normalize answers for comparison
+        if isinstance(selected_answer, list):
+            student_answer = sorted([ans.lower().strip() for ans in selected_answer])
+        else:
+            student_answer = selected_answer.lower().strip()
+
+        # Get correct answer
+        correct_answer = question.correct_answer
+
+        # Check if answer is correct
+        is_correct = False
+        question_marks = 0.0
+
+        if question.question_type == 'mcq_multiple':
+            # For multiple choice, compare as sorted lists
+            if isinstance(correct_answer, dict) and 'answers' in correct_answer:
+                correct_list = sorted([ans.lower().strip() for ans in correct_answer['answers']])
+            elif isinstance(correct_answer, list):
+                correct_list = sorted([ans.lower().strip() for ans in correct_answer])
+            else:
+                correct_list = []
+
+            is_correct = student_answer == correct_list
+
+        elif question.question_type in ['mcq_single', 'true_false']:
+            # For single choice
+            if isinstance(correct_answer, dict) and 'answer' in correct_answer:
+                correct_value = correct_answer['answer'].lower().strip()
+            elif isinstance(correct_answer, str):
+                correct_value = correct_answer.lower().strip()
+            else:
+                correct_value = ''
+
+            is_correct = student_answer == correct_value
+
+        elif question.question_type in ['fill_blank', 'numerical']:
+            # For text/numerical answers
+            if isinstance(correct_answer, dict) and 'answer' in correct_answer:
+                correct_value = str(correct_answer['answer']).lower().strip()
+            elif isinstance(correct_answer, str):
+                correct_value = correct_answer.lower().strip()
+            else:
+                correct_value = ''
+
+            is_correct = student_answer == correct_value
+
+        # Calculate marks
+        if is_correct:
+            correct_answers += 1
+            question_marks = float(question.marks)
+        else:
+            wrong_answers += 1
+            # Apply negative marking if enabled
+            if attempt.test.test_series.has_negative_marking:
+                question_marks = -float(question.negative_marks)
+
+        marks_obtained += question_marks
+
+        # Track subject-wise score
+        if question.subject:
+            subject_name = question.subject.name
+            if subject_name not in subject_wise_score:
+                subject_wise_score[subject_name] = {
+                    'correct': 0,
+                    'wrong': 0,
+                    'marks': 0.0
+                }
+
+            if is_correct:
+                subject_wise_score[subject_name]['correct'] += 1
+            else:
+                subject_wise_score[subject_name]['wrong'] += 1
+            subject_wise_score[subject_name]['marks'] += question_marks
+
+        # Save student answer with proper format
+        StudentAnswer.objects.create(
+            attempt=attempt,
+            question=question,
+            selected_answer={'answer': selected_answer} if not isinstance(selected_answer, list) else {'answers': selected_answer},
+            is_correct=is_correct,
+            marks_obtained=question_marks,
+            is_attempted=True,
+            answered_at=timezone.now()
+        )
+
+        # Update question analytics
+        question.total_attempts += 1
+        if is_correct:
+            question.correct_attempts += 1
+        question.save(update_fields=['total_attempts', 'correct_attempts'])
+
+    # Calculate percentage
+    percentage_score = 0
+    if attempt.total_marks > 0:
+        percentage_score = (marks_obtained / float(attempt.total_marks)) * 100
+
+    # Update attempt with results
+    attempt.status = 'submitted'
+    attempt.attempted_questions = attempted_questions
+    attempt.correct_answers = correct_answers
+    attempt.wrong_answers = wrong_answers
+    attempt.marks_obtained = marks_obtained
+    attempt.percentage_score = max(0, percentage_score)
+    attempt.subject_wise_score = subject_wise_score
+    attempt.passed = attempt.percentage_score >= attempt.test.test_series.pass_percentage
+    attempt.save()
+
+    # Rank/percentile among all submitted attempts for this test
+    attempt.calculate_rank()
+
+    # Update test series analytics
+    test_series = attempt.test.test_series
+    test_series.total_attempts += 1
+
+    # Recalculate average score
+    all_attempts = TestAttempt.objects.filter(
+        test__test_series=test_series,
+        status='submitted'
+    )
+    if all_attempts.exists():
+        avg_score = all_attempts.aggregate(avg=Sum('marks_obtained'))['avg'] or 0
+        test_series.average_score = avg_score / all_attempts.count() if all_attempts.count() > 0 else 0
+
+    test_series.save()
+    return attempt
 
 
 @login_required
 def submit_test(request, attempt_id):
     """Submit test and calculate results"""
     attempt = get_object_or_404(TestAttempt, id=attempt_id, user=request.user)
-    
+
     if attempt.status == 'submitted':
         messages.info(request, 'This test has already been submitted.')
         return redirect('front_exam_result', attempt_id=attempt.id)
-    
+
     if request.method == 'POST':
-        # Calculate time spent
-        time_spent = timezone.now() - attempt.started_at
-        attempt.time_spent = time_spent
-        attempt.submitted_at = timezone.now()
-        
-        # Initialize counters
-        correct_answers = 0
-        wrong_answers = 0
-        attempted_questions = 0
-        marks_obtained = 0.0
-        subject_wise_score = {}
-        
-        # Get all questions for this test
-        questions = attempt.test.questions.all()
-        
-        # Process each question
-        for question in questions:
-            answer_key = f'question_{question.id}'
-            
-            # Get student's answer from POST data
-            if question.question_type == 'mcq_multiple':
-                selected_answer = request.POST.getlist(answer_key)
-            else:
-                selected_answer = request.POST.get(answer_key, '')
-            
-            # Check if answered
-            is_answered = bool(selected_answer) and not (isinstance(selected_answer, list) and len(selected_answer) == 0)
-            
-            # Skip if not answered - create empty record
-            if not is_answered:
-                StudentAnswer.objects.create(
-                    attempt=attempt,
-                    question=question,
-                    selected_answer={},
-                    is_correct=False,
-                    marks_obtained=0,
-                    is_attempted=False
-                )
-                continue
-            
-            attempted_questions += 1
-            
-            # Normalize answers for comparison
-            if isinstance(selected_answer, list):
-                student_answer = sorted([ans.lower().strip() for ans in selected_answer])
-            else:
-                student_answer = selected_answer.lower().strip()
-            
-            # Get correct answer
-            correct_answer = question.correct_answer
-            
-            # Check if answer is correct
-            is_correct = False
-            question_marks = 0.0
-            
-            if question.question_type == 'mcq_multiple':
-                # For multiple choice, compare as sorted lists
-                if isinstance(correct_answer, dict) and 'answers' in correct_answer:
-                    correct_list = sorted([ans.lower().strip() for ans in correct_answer['answers']])
-                elif isinstance(correct_answer, list):
-                    correct_list = sorted([ans.lower().strip() for ans in correct_answer])
-                else:
-                    correct_list = []
-                
-                is_correct = student_answer == correct_list
-            
-            elif question.question_type in ['mcq_single', 'true_false']:
-                # For single choice
-                if isinstance(correct_answer, dict) and 'answer' in correct_answer:
-                    correct_value = correct_answer['answer'].lower().strip()
-                elif isinstance(correct_answer, str):
-                    correct_value = correct_answer.lower().strip()
-                else:
-                    correct_value = ''
-                
-                is_correct = student_answer == correct_value
-            
-            elif question.question_type in ['fill_blank', 'numerical']:
-                # For text/numerical answers
-                if isinstance(correct_answer, dict) and 'answer' in correct_answer:
-                    correct_value = str(correct_answer['answer']).lower().strip()
-                elif isinstance(correct_answer, str):
-                    correct_value = correct_answer.lower().strip()
-                else:
-                    correct_value = ''
-                
-                is_correct = student_answer == correct_value
-            
-            # Calculate marks
-            if is_correct:
-                correct_answers += 1
-                question_marks = float(question.marks)
-            else:
-                wrong_answers += 1
-                # Apply negative marking if enabled
-                if attempt.test.test_series.has_negative_marking:
-                    question_marks = -float(question.negative_marks)
-            
-            marks_obtained += question_marks
-            
-            # Track subject-wise score
-            if question.subject:
-                subject_name = question.subject.name
-                if subject_name not in subject_wise_score:
-                    subject_wise_score[subject_name] = {
-                        'correct': 0,
-                        'wrong': 0,
-                        'marks': 0.0
-                    }
-                
-                if is_correct:
-                    subject_wise_score[subject_name]['correct'] += 1
-                else:
-                    subject_wise_score[subject_name]['wrong'] += 1
-                subject_wise_score[subject_name]['marks'] += question_marks
-            
-            # Save student answer with proper format
-            StudentAnswer.objects.create(
-                attempt=attempt,
-                question=question,
-                selected_answer={'answer': selected_answer} if not isinstance(selected_answer, list) else {'answers': selected_answer},
-                is_correct=is_correct,
-                marks_obtained=question_marks,
-                is_attempted=True,  # Fixed: Set is_attempted flag
-                answered_at=timezone.now()  # Fixed: Set answered timestamp
-            )
-            
-            # Update question analytics
-            question.total_attempts += 1
-            if is_correct:
-                question.correct_attempts += 1
-            question.save(update_fields=['total_attempts', 'correct_attempts'])
-        
-        # Calculate percentage
-        percentage_score = 0
-        if attempt.total_marks > 0:
-            percentage_score = (marks_obtained / float(attempt.total_marks)) * 100
-        
-        # Update attempt with results
-        attempt.status = 'submitted'
-        attempt.attempted_questions = attempted_questions
-        attempt.correct_answers = correct_answers
-        attempt.wrong_answers = wrong_answers
-        attempt.marks_obtained = marks_obtained
-        attempt.percentage_score = max(0, percentage_score)
-        attempt.subject_wise_score = subject_wise_score
-        attempt.save()
-        
-        # Update test series analytics
-        test_series = attempt.test.test_series
-        test_series.total_attempts += 1
-        
-        # Recalculate average score
-        all_attempts = TestAttempt.objects.filter(
-            test__test_series=test_series,
-            status='submitted'
-        )
-        if all_attempts.exists():
-            avg_score = all_attempts.aggregate(avg=Sum('marks_obtained'))['avg'] or 0
-            test_series.average_score = avg_score / all_attempts.count() if all_attempts.count() > 0 else 0
-        
-        test_series.save()
-        
+        _finalize_test_attempt(attempt, request.POST)
         messages.success(request, 'Test submitted successfully!')
         return redirect('front_exam_result', attempt_id=attempt.id)
-    
-    # If GET request, just redirect to result
+
+    # GET request — reached when the session view detects time has run out
+    # and redirects here. There is no answer payload on a GET, so grade with
+    # an empty submission (everything counts as skipped) instead of bouncing
+    # back to the session view, which would re-detect the expiry and loop.
+    from django.http import QueryDict
+    _finalize_test_attempt(attempt, QueryDict())
+    messages.warning(request, 'Time was up — your test was submitted automatically.')
     return redirect('front_exam_result', attempt_id=attempt.id)
 
 
@@ -1343,21 +1626,84 @@ def test_result(request, attempt_id):
         messages.warning(request, 'Please submit the test first to see results.')
         return redirect('front_exam_session', attempt_id=attempt.id)
     
-    # Calculate skipped questions
+    test = attempt.test
     skipped_questions = attempt.total_questions - attempt.attempted_questions
-    
-    # Get all answers for review (if allowed)
-    student_answers = None
-    if attempt.test.allow_review:
-        student_answers = StudentAnswer.objects.filter(
-            attempt=attempt
-        ).select_related('question', 'question__subject')
-    
+    answers = list(
+        StudentAnswer.objects.filter(attempt=attempt)
+        .select_related('question', 'question__subject')
+        .order_by('question__order', 'question__id')
+    )
+
+    # Section-wise breakdown and question strip
+    sections = {}
+    question_strip = []
+    positive_marks = negative_marks = 0.0
+    for number, answer in enumerate(answers, start=1):
+        question = answer.question
+        name = question.subject.name if question.subject else 'General'
+        section = sections.setdefault(name, {
+            'name': name, 'total': 0, 'correct': 0, 'wrong': 0, 'skipped': 0, 'marks': 0.0, 'max_marks': 0,
+        })
+        section['total'] += 1
+        section['max_marks'] += question.marks
+        marks = float(answer.marks_obtained)
+        section['marks'] += marks
+        if not answer.is_attempted:
+            status = 'skipped'
+        elif answer.is_correct:
+            status = 'correct'
+            positive_marks += marks
+        else:
+            status = 'wrong'
+            negative_marks += marks
+        section[status] += 1
+        question_strip.append({'number': number, 'status': status, 'section': name})
+    for section in sections.values():
+        attempted = section['correct'] + section['wrong']
+        section['accuracy'] = round(section['correct'] * 100 / attempted) if attempted else 0
+        section['score_pct'] = max(0, round(section['marks'] * 100 / section['max_marks'])) if section['max_marks'] else 0
+    section_list = sorted(sections.values(), key=lambda s: s['score_pct'])
+
+    # Time
+    seconds = int(attempt.time_spent.total_seconds()) if attempt.time_spent else 0
+    hours, remainder = divmod(seconds, 3600)
+    minutes, secs = divmod(remainder, 60)
+    time_taken = f"{hours}h {minutes:02d}m {secs:02d}s" if hours else f"{minutes}m {secs:02d}s"
+    duration_seconds = test.duration_minutes * 60
+
+    # How others did on this test
+    submitted = TestAttempt.objects.filter(test=test, status='submitted')
+    stats = submitted.aggregate(avg=Avg('marks_obtained'), top=Max('marks_obtained'))
+    previous_attempts = (
+        TestAttempt.objects.filter(test=test, user=request.user, status='submitted')
+        .exclude(pk=attempt.pk).order_by('-submitted_at')[:5]
+    )
+
+    attempted = attempt.attempted_questions
+    pass_percentage = test.test_series.pass_percentage
     context = {
         'attempt': attempt,
-        'test': attempt.test,
+        'test': test,
+        'series': test.test_series,
         'skipped_questions': skipped_questions,
-        'student_answers': student_answers,
+        'accuracy': round(attempt.correct_answers * 100 / attempted) if attempted else 0,
+        'time_taken': time_taken,
+        'time_used_pct': min(100, round(seconds * 100 / duration_seconds)) if duration_seconds else 0,
+        'avg_time_per_question': round(seconds / attempt.total_questions) if attempt.total_questions else 0,
+        'positive_marks': positive_marks,
+        'negative_marks': abs(negative_marks),
+        'score_pct': max(0, min(100, float(attempt.percentage_score))),
+        'pass_percentage': pass_percentage,
+        'pass_marks': round(float(attempt.total_marks) * pass_percentage / 100, 2),
+        'sections': sorted(sections.values(), key=lambda s: list(sections).index(s['name'])),
+        'weakest_section': section_list[0] if len(section_list) > 1 else None,
+        'strongest_section': section_list[-1] if len(section_list) > 1 else None,
+        'question_strip': question_strip,
+        'average_marks': stats['avg'] or 0,
+        'top_marks': stats['top'] or 0,
+        'total_takers': submitted.count(),
+        'previous_attempts': previous_attempts,
+        'attempts_left': max(0, test.max_attempts - submitted.filter(user=request.user).count()),
     }
     return render(request, 'test_result.html', context)
 
@@ -1700,9 +2046,13 @@ def login_view(request):
                 
                 messages.success(request, f'Welcome back, {user.get_full_name_or_email()}!')
                 
-                # Redirect to 'next' if present
-                next_url = request.POST.get('next') or request.GET.get('next') or 'home'
-                return redirect(next_url)
+                # Redirect to 'next' if present (validated to prevent open-redirects)
+                next_url = request.POST.get('next') or request.GET.get('next')
+                if next_url and url_has_allowed_host_and_scheme(
+                    url=next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+                ):
+                    return redirect(next_url)
+                return redirect('home')
             else:
                 messages.error(request, 'Your account is disabled.')
         else:
@@ -1771,7 +2121,7 @@ def forgot_password_request(request):
     # Prepare email content
     email_subject = 'Password Reset OTP'
     email_message = f"""
-Hello {user.first_name or user.username},
+Hello {user.first_name or user.email},
 
 You have requested to reset your password.
 
@@ -2335,7 +2685,7 @@ def search_suggestions(request):
     test_series = TestSeries.objects.filter(
         Q(title__icontains=query) | Q(description__icontains=query),
         is_active=True
-    ).select_related("category")[:3]
+    )[:3]
     
     for series in test_series:
         suggestions.append({
@@ -2344,7 +2694,7 @@ def search_suggestions(request):
             'url': f'/exam-series/{series.pk}/',
             'price': f'₹{series.price}' if not series.is_free else 'Free',
             'thumbnail': series.thumbnail.url if series.thumbnail else None,
-            'category': series.category.name if series.category else 'General'
+            'category': 'Test Series'
         })
     
     # Search E-Library Courses
@@ -2400,11 +2750,27 @@ def search_suggestions(request):
     return JsonResponse({'suggestions': suggestions[:15]})
 
 
+SEARCH_RESULT_LIMIT = 60
+POPULAR_SEARCHES = ['JEE Main', 'NEET UG', 'SSC CGL', 'CBSE Class 10', 'UPSC', 'Banking', 'Olympiad', 'Class 12 Science']
+
+
+def _match_all_words(words, fields):
+    """Q requiring every word to appear in at least one of the fields (so 'bihar class 10' finds 'Bihar Board … Class 10')."""
+    condition = Q()
+    for word in words:
+        any_field = Q()
+        for field in fields:
+            any_field |= Q(**{f'{field}__icontains': word})
+        condition &= any_field
+    return condition
+
+
 def search_results(request):
     """
     Full search results page
     """
     query = request.GET.get('q', '').strip()
+    words = query.split()[:8]
     
     context = {
         'query': query,
@@ -2414,44 +2780,44 @@ def search_results(request):
         'test_series': [],
         'elibrary_courses': [],
         'product_bundles': [],
-        'total_results': 0
+        'total_results': 0,
+        'popular_searches': POPULAR_SEARCHES,
     }
     
     if query:
         # Categories
-        categories = Category.objects.filter(
-            Q(name__icontains=query) | Q(description__icontains=query)
-        ).distinct()
+        categories = Category.objects.filter(_match_all_words(words, ['name', 'description'])).distinct()
         
         # Video Courses
         video_courses = VideoCourse.objects.filter(
-            Q(name__icontains=query) | 
-            Q(description__icontains=query) |
-            Q(category__name__icontains=query)
+            _match_all_words(words, ['name', 'description', 'category__name'])
         ).select_related('category').distinct()
         
         # Live Classes
         live_courses = LiveClassCourse.objects.filter(
-            Q(name__icontains=query) | 
-            Q(about__icontains=query) |
-            Q(category__name__icontains=query),
+            _match_all_words(words, ['name', 'about', 'category__name']),
             is_active=True
         ).select_related('category').distinct()
         
         # Test Series
-        test_series = TestSeries.objects.filter(
-            Q(title__icontains=query) | 
-            Q(description__icontains=query) |
-            Q(category__name__icontains=query),
-            is_active=True
-        ).select_related('category').distinct()
+        # Title matches first, then the rest; the full list lives in the filterable catalogue.
+        test_series_qs = TestSeries.objects.filter(
+            _match_all_words(words, ['title', 'description', 'exam']), is_active=True
+        )
+        test_series_total = test_series_qs.count()
+        title_hits = test_series_qs.filter(_match_all_words(words, ['title']))
+        test_series = (
+            _series_cards(title_hits.order_by('grade', 'stream', 'title')[:SEARCH_RESULT_LIMIT], request.user)
+        )
+        if len(test_series) < SEARCH_RESULT_LIMIT:
+            test_series += _series_cards(
+                test_series_qs.exclude(pk__in=title_hits.values('pk')).order_by('title')[:SEARCH_RESULT_LIMIT - len(test_series)],
+                request.user,
+            )
         
         # E-Library
         elibrary_courses = ELibraryCourse.objects.filter(
-            Q(title__icontains=query) | 
-            Q(description__icontains=query) |
-            Q(short_description__icontains=query) |
-            Q(category__name__icontains=query),
+            _match_all_words(words, ['title', 'description', 'short_description', 'category__name']),
             is_active=True
         ).select_related('category').distinct()
         
@@ -2494,7 +2860,6 @@ def search_results(request):
         categories = list(categories)
         video_courses = list(video_courses)
         live_courses = list(live_courses)
-        test_series = list(test_series)
         elibrary_courses = list(elibrary_courses)
 
         context['categories'] = categories
@@ -2506,13 +2871,15 @@ def search_results(request):
         context['category_count'] = len(categories)
         context['video_course_count'] = len(video_courses)
         context['live_course_count'] = len(live_courses)
-        context['test_series_count'] = len(test_series)
+        context['test_series_count'] = test_series_total
+        context['test_series_more'] = test_series_total > len(test_series)
+        context['test_series_url'] = f"{reverse('all_test_series')}?q={quote(query)}"
         context['elibrary_course_count'] = len(elibrary_courses)
         context['total_results'] = (
             len(categories) +
             len(video_courses) +
             len(live_courses) +
-            len(test_series) +
+            test_series_total +
             len(elibrary_courses) +
             len(bundle_list)
         )
@@ -2521,7 +2888,129 @@ def search_results(request):
 
 
 
+TEST_SERIES_SORTS = {
+    'newest': ('Newest first', ['-created_at']),
+    'popular': ('Most attempted', ['-total_attempts', '-created_at']),
+    'class': ('Class (low to high)', ['grade', 'board', 'stream', 'title']),
+    'price_low': ('Price: low to high', ['price', 'title']),
+    'price_high': ('Price: high to low', ['-price', 'title']),
+    'title': ('Name (A–Z)', ['title']),
+}
+
+
+def all_test_series(request):
+    """Browse every active test series with search, board/class/stream/subject/level/price filters and sorting."""
+    params = request.GET
+    query = params.get('q', '').strip()
+    exam = params.get('exam', '')
+    board = params.get('board', '')
+    grade = params.get('grade', '')
+    stream = params.get('stream', '')
+    subject = params.get('subject', '')
+    difficulty = params.get('difficulty', '')
+    price = params.get('price', '')
+    paper = params.get('paper', '') if params.get('paper') in ('subject', 'pyp') else ''
+    sort = params.get('sort', 'newest') if params.get('sort') in TEST_SERIES_SORTS else 'newest'
+
+    series_qs = TestSeries.objects.filter(is_active=True)
+    if query:
+        series_qs = series_qs.filter(Q(title__icontains=query) | Q(description__icontains=query))
+    if exam:
+        series_qs = series_qs.filter(exam=exam)
+    if board in dict(TestSeries.BOARD_CHOICES):
+        series_qs = series_qs.filter(board=board)
+    if grade.isdigit():
+        series_qs = series_qs.filter(grade=int(grade))
+    if stream in dict(TestSeries.STREAM_CHOICES):
+        series_qs = series_qs.filter(stream=stream)
+    if subject:
+        series_qs = series_qs.filter(
+            tests__is_active=True, tests__questions__subject__code=subject
+        ).distinct()
+    if difficulty in dict(TestSeries.DIFFICULTY_CHOICES):
+        series_qs = series_qs.filter(difficulty=difficulty)
+    if price == 'free':
+        series_qs = series_qs.filter(is_free=True)
+    elif price == 'paid':
+        series_qs = series_qs.filter(is_free=False)
+    if paper:
+        series_qs = series_qs.filter(
+            pk__in=Test.objects.filter(is_active=True, is_demo=False, paper_type=paper).values('test_series')
+        )
+
+    series_qs = series_qs.annotate(
+        active_test_count=Count('tests', filter=Q(tests__is_active=True, tests__is_demo=False), distinct=True),
+        active_question_count=Count('tests__questions', filter=Q(tests__is_active=True, tests__is_demo=False), distinct=True),
+    ).order_by(*TEST_SERIES_SORTS[sort][1])
+
+    page_obj = Paginator(series_qs, 12).get_page(params.get('page'))
+
+    purchased_ids = set()
+    if request.user.is_authenticated:
+        purchased_ids = set(
+            UserCourseAccess.objects
+            .filter(user=request.user, course_type='test_series', is_active=True)
+            .values_list('course_id', flat=True)
+        )
+    for series in page_obj:
+        series.price_display = "FREE" if series.is_free else f"₹{series.price:.2f}"
+        series.is_purchased = series.id in purchased_ids
+
+    active_filters = []
+    labels = {
+        'exam': exam or None,
+        'board': dict(TestSeries.BOARD_CHOICES).get(board),
+        'grade': f"Class {grade}" if grade.isdigit() else None,
+        'stream': dict(TestSeries.STREAM_CHOICES).get(stream),
+        'subject': Subject.objects.filter(code=subject).values_list('name', flat=True).first() if subject else None,
+        'difficulty': dict(TestSeries.DIFFICULTY_CHOICES).get(difficulty),
+        'price': {'free': 'Free', 'paid': 'Paid'}.get(price),
+        'paper': {'subject': 'Has subject tests', 'pyp': 'Has previous year papers'}.get(paper),
+        'q': f'"{query}"' if query else None,
+    }
+    for key, label in labels.items():
+        if label:
+            remaining = params.copy()
+            remaining.pop(key, None)
+            remaining.pop('page', None)
+            active_filters.append({'label': label, 'remove_url': f"?{remaining.urlencode()}"})
+
+    pagination_params = params.copy()
+    pagination_params.pop('page', None)
+
+    active_series = TestSeries.objects.filter(is_active=True)
+    board_counts = dict(active_series.exclude(board='').values_list('board').annotate(n=Count('id')))
+    context = {
+        'page_obj': page_obj,
+        'total_count': page_obj.paginator.count,
+        'query': query,
+        'selected': {
+            'exam': exam, 'board': board, 'grade': grade, 'stream': stream, 'subject': subject,
+            'difficulty': difficulty, 'price': price, 'paper': paper, 'sort': sort,
+        },
+        'board_options': [
+            (value, label, board_counts[value])
+            for value, label in TestSeries.BOARD_CHOICES
+            if board_counts.get(value)
+        ],
+        'exam_options': list(
+            active_series.exclude(exam='').values_list('exam').annotate(n=Count('id')).order_by('exam')
+        ),
+        'grade_options': sorted(set(active_series.exclude(grade__isnull=True).values_list('grade', flat=True))),
+        'stream_options': TestSeries.STREAM_CHOICES,
+        'subject_options': Subject.objects.filter(
+            question__test__is_active=True, question__test__test_series__is_active=True
+        ).distinct().order_by('name'),
+        'difficulty_options': TestSeries.DIFFICULTY_CHOICES,
+        'sort_options': [(key, label) for key, (label, _) in TEST_SERIES_SORTS.items()],
+        'active_filters': active_filters,
+        'pagination_query': pagination_params.urlencode(),
+    }
+    return render(request, 'all_test_series.html', context)
+
+
 #category display
+
 def category_detail(request, slug):
     """
     Display all courses (Video, Live Class, Test Series, E-Library) 
@@ -2539,16 +3028,23 @@ def category_detail(request, slug):
         is_active=True
     ).order_by('-created_at'))
     
-    test_series = list(TestSeries.objects.filter(
-        category=category,
-        is_active=True
-    ).order_by('-created_at'))
-    
     elibrary_courses = list(ELibraryCourse.objects.filter(
         category=category,
         is_active=True
     ).order_by('-created_at'))
-    
+
+    # Test series are linked by exam name (e.g. 'SSC CGL'); board categories show that board's class-wise series
+    board_codes = CATEGORY_BOARD_CODES.get(category.name)
+    test_series_filter = Q(board__in=board_codes) if board_codes else Q(exam=category.name)
+    test_series = _series_cards(
+        TestSeries.objects.filter(test_series_filter, is_active=True).order_by('grade', 'stream', '-created_at'),
+        request.user,
+    )
+    if board_codes:
+        test_series_url = reverse('all_test_series') + (f"?board={board_codes[0]}" if len(board_codes) == 1 else '')
+    else:
+        test_series_url = reverse('all_test_series') + f"?exam={quote(category.name)}"
+
     # Count total courses
     total_courses = (
         len(video_courses) +
@@ -2561,16 +3057,19 @@ def category_detail(request, slug):
         'category': category,
         'video_courses': video_courses,
         'live_courses': live_courses,
-        'test_series': test_series,
         'elibrary_courses': elibrary_courses,
+        'test_series': test_series,
+        'test_series_url': test_series_url,
+        'test_total': sum(series.active_test_count for series in test_series),
+        'question_total': sum(series.active_question_count for series in test_series),
+        'demo_series_total': sum(1 for series in test_series if series.demo_count and not series.is_free),
         'total_courses': total_courses,
         'video_course_count': len(video_courses),
         'live_course_count': len(live_courses),
         'test_series_count': len(test_series),
         'elibrary_course_count': len(elibrary_courses),
     }
-    
-    return render(request, 'category_detail.html', context)    
+    return render(request, 'category_detail.html', context)
 
 #Elibrary
 def elibrary_home(request):
@@ -3003,7 +3502,7 @@ def create_payment_order(request, course_type, course_id):
             'course_name': course_name,
             'course_type': course_type,
             'course_id': course.id,
-            'user_name': request.user.get_full_name() or request.user.username,
+            'user_name': request.user.get_full_name() or request.user.email,
             'user_email': request.user.email,
             'user_phone': user_phone
         })
@@ -3173,7 +3672,7 @@ def payment_handler(request):
             'course_type': payment.course_type,
             'course_id': payment.course_id,
             'amount': float(payment.amount / 100),
-            'user': payment.user.get_full_name() or payment.user.username
+            'user': payment.user.get_full_name() or payment.user.email
         })
         
     except Exception as e:
@@ -3183,3 +3682,93 @@ def payment_handler(request):
             'error': str(e),
             'type': 'error'
         }, status=500)
+
+
+# ===== TUTOR (AI TEACHER CHAT) =====
+
+TUTOR_PERSONA = (
+    "[Context for this reply: You are Tutor, the AI teacher on the Indore Tutorial learning platform "
+    "for Indian students (CBSE, ICSE and state boards, and exams such as JEE, NEET, SSC, banking and UPSC). "
+    "Your name is Tutor. Teach patiently: explain step by step in simple language with examples, and keep "
+    "replies short unless the student asks for detail. If the student writes in Hindi or Hinglish, reply the "
+    "same way. Do not mention any other product, company or model name.{student}]\n\nStudent: "
+)
+TUTOR_HISTORY_LIMIT = 12        # messages sent upstream per request
+TUTOR_MESSAGE_LIMIT = 2000      # characters per student message
+TUTOR_HOURLY_LIMIT = {'user': 60, 'guest': 15}
+
+
+def _tutor_rate_limited(request):
+    """Count this request against an hourly allowance per user (or per IP for guests)."""
+    if request.user.is_authenticated:
+        key, limit = f"tutor-rate:u{request.user.pk}", TUTOR_HOURLY_LIMIT['user']
+    else:
+        ip = request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip() or request.META.get('REMOTE_ADDR', '')
+        key, limit = f"tutor-rate:ip{ip}", TUTOR_HOURLY_LIMIT['guest']
+    cache.add(key, 0, timeout=3600)
+    try:
+        count = cache.incr(key)
+    except ValueError:  # expired between add and incr
+        cache.set(key, 1, timeout=3600)
+        count = 1
+    return count > limit
+
+
+@require_POST
+def tutor_chat(request):
+    """Relay a chat with Tutor to the AI API, keeping the API key on the server."""
+    if not settings.TUTOR_API_KEY:
+        return JsonResponse({'error': 'Tutor is not set up yet. Please try again later.'}, status=503)
+
+    try:
+        payload = json.loads(request.body or b'{}')
+    except ValueError:
+        return JsonResponse({'error': 'Invalid request.'}, status=400)
+
+    messages_in = payload.get('messages')
+    if not isinstance(messages_in, list) or not messages_in:
+        return JsonResponse({'error': 'Send at least one message.'}, status=400)
+
+    history = []
+    for item in messages_in[-TUTOR_HISTORY_LIMIT:]:
+        if not isinstance(item, dict):
+            continue
+        role = item.get('role')
+        content = str(item.get('content', '')).strip()[:TUTOR_MESSAGE_LIMIT]
+        if role in ('user', 'assistant') and content:
+            history.append({'role': role, 'content': content})
+    # The conversation sent upstream must start with the student and end with their new question.
+    while history and history[0]['role'] != 'user':
+        history.pop(0)
+    if not history or history[-1]['role'] != 'user':
+        return JsonResponse({'error': 'Send a question for Tutor.'}, status=400)
+
+    if _tutor_rate_limited(request):
+        return JsonResponse(
+            {'error': 'You have sent a lot of questions this hour. Please take a short break and try again.'},
+            status=429,
+        )
+
+    name = request.user.first_name if request.user.is_authenticated else ''
+    student = f" The student's name is {name}." if name else ''
+    history[-1] = {'role': 'user', 'content': TUTOR_PERSONA.format(student=student) + history[-1]['content']}
+
+    try:
+        response = requests.post(
+            settings.TUTOR_API_URL,
+            json={'model': settings.TUTOR_MODEL, 'messages': history},
+            headers={'Authorization': f'Bearer {settings.TUTOR_API_KEY}'},
+            timeout=60,
+        )
+        data = response.json()
+    except requests.Timeout:
+        return JsonResponse({'error': 'Tutor is taking too long to answer. Please ask again.'}, status=504)
+    except (requests.RequestException, ValueError):
+        logger.exception("Tutor API request failed")
+        return JsonResponse({'error': 'Tutor is unavailable right now. Please try again shortly.'}, status=502)
+
+    reply = data.get('reply') if response.ok else None
+    if not reply:
+        logger.error("Tutor API error %s: %s", response.status_code, data.get('error'))
+        return JsonResponse({'error': 'Tutor could not answer that. Please try again.'}, status=502)
+    return JsonResponse({'reply': reply})

@@ -9,7 +9,7 @@
         <div class="login-welcome">Verify Your Email</div>
         
         <div class="verification-info">
-          <i class="fa fa-envelope-o"></i>
+          <i class="fa fa-envelope"></i>
           <p>We've sent a 6-digit verification code to</p>
           <strong>{{ user.email }}</strong>
           <p class="helper-text">Please check your inbox and enter the code below</p>
@@ -77,7 +77,7 @@
   border-radius: 12px;
   box-shadow: 0 10px 40px rgba(0,0,0,0.1);
   overflow: hidden;
-  border-top: 4px solid #c1272d;
+  border-top: 4px solid var(--brand-primary);
 }
 
 .verification-form-container {
@@ -87,7 +87,7 @@
 .login-welcome {
   font-size: 28px;
   font-weight: 700;
-  color: #c1272d;
+  color: var(--brand-primary-text);
   margin-bottom: 30px;
   text-align: center;
 }
@@ -111,14 +111,14 @@
   text-align: center;
   margin-bottom: 25px;
   padding: 20px;
-  background: #fff5f5;
+  background: #fff8e6;
   border-radius: 8px;
-  border-left: 4px solid #c1272d;
+  border-left: 4px solid var(--brand-primary);
 }
 
 .verification-info i {
   font-size: 32px;
-  color: #c1272d;
+  color: var(--brand-primary-text);
   margin-bottom: 10px;
 }
 
@@ -128,7 +128,7 @@
 }
 
 .verification-info strong {
-  color: #c1272d;
+  color: var(--brand-primary-text);
   font-size: 16px;
 }
 
@@ -152,16 +152,16 @@
 }
 
 .otp-input:focus {
-  border-color: #c1272d;
-  box-shadow: 0 0 0 0.2rem rgba(193, 39, 45, 0.25);
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 0.2rem rgba(var(--brand-primary-rgb), 0.25);
   outline: none;
 }
 
 .login-btn {
   width: 100%;
   padding: 14px;
-  background: #c1272d;
-  color: white;
+  background: var(--brand-primary);
+  color: var(--brand-on-primary);
   border: none;
   border-radius: 8px;
   font-size: 16px;
@@ -172,9 +172,9 @@
 }
 
 .login-btn:hover:not(:disabled) {
-  background: #a02228;
+  background: var(--brand-primary-dark);
   transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(193, 39, 45, 0.4);
+  box-shadow: 0 5px 15px rgba(var(--brand-primary-rgb), 0.4);
 }
 
 .login-btn:disabled {
@@ -186,7 +186,7 @@
   text-align: center;
   margin-top: 25px;
   padding: 15px;
-  background: #fff5f5;
+  background: #fff8e6;
   border-radius: 6px;
 }
 
@@ -199,7 +199,7 @@
 .resend-btn {
   background: none;
   border: none;
-  color: #c1272d;
+  color: var(--brand-primary-text);
   cursor: pointer;
   text-decoration: underline;
   font-size: 14px;
@@ -209,8 +209,8 @@
 }
 
 .resend-btn:hover:not(:disabled) {
-  color: #a02228;
-  background: rgba(193, 39, 45, 0.1);
+  color: var(--brand-primary-text);
+  background: rgba(var(--brand-primary-rgb), 0.1);
   text-decoration: none;
 }
 
@@ -222,7 +222,7 @@
 }
 
 .error { 
-  color: #c1272d; 
+  color: var(--brand-primary-text); 
   font-size: 13px; 
   margin-top: 8px;
   text-align: center; 
@@ -241,7 +241,7 @@
 }
 
 .login-signup a:hover {
-  color: #c1272d;
+  color: var(--brand-primary-text);
   text-decoration: underline;
 }
 
@@ -267,13 +267,13 @@
 
 .msg-error {
   background: #ffe6e6;
-  color: #c1272d;
+  color: var(--brand-primary-text);
   border: 1px solid #ffcccc;
 }
 
 .msg-info {
-  background: #fff5f5;
-  color: #c1272d;
+  background: #fff8e6;
+  color: var(--brand-primary-text);
   border: 1px solid #ffdddd;
 }
 

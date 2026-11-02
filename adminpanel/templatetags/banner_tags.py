@@ -31,6 +31,11 @@ def render_about_us_section():
         'service_items': service_items,
     }
 
+@register.inclusion_tag('components/contact_section.html')
+def render_contact_section():
+    return {}
+
+
 @register.inclusion_tag('components/footer_section.html', takes_context=True)
 def render_footer_section(context):
     footer_settings = context.get('footer_settings')

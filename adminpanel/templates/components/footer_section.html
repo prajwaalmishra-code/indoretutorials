@@ -90,12 +90,14 @@
     </div>
     
     <div class="footer-legal">
-        {{ footer_settings.copyright_text }}
+        <div class="footer-copyright">{{ footer_settings.copyright_text }}</div>
         {% if footer_legal_links %}
-            {% for legal_link in footer_legal_links %}
-                <span class="footer-dot">&bull;</span>
-                <a href="{{ legal_link.url }}">{{ legal_link.title }}</a>
-            {% endfor %}
+            <div class="footer-legal-links">
+                {% for legal_link in footer_legal_links %}
+                    {% if not forloop.first %}<span class="footer-dot">&bull;</span>{% endif %}
+                    <a href="{{ legal_link.url }}">{{ legal_link.title }}</a>
+                {% endfor %}
+            </div>
         {% endif %}
     </div>
 </footer>
@@ -168,7 +170,7 @@
 
 .footer-install-btn {
     background: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-primary-dark) 100%);
-    color: #ffffff;
+    color: var(--brand-on-primary, #14141b);
     border: none;
     padding: 12px 24px;
     border-radius: 25px;
@@ -308,8 +310,20 @@
     margin-top: 34px;
     font-size: 0.97em;
     color: #7c8696;
-    padding: 14px 0 6px 0;
+    padding: 18px 20px 8px 20px;
     letter-spacing: 0.04em;
+}
+
+.footer-copyright {
+    margin-bottom: 10px;
+}
+
+.footer-legal-links {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    row-gap: 8px;
 }
 
 .footer-legal a {
@@ -318,6 +332,7 @@
     text-decoration: none;
     font-size: 0.9em;
     opacity: 0.91;
+    white-space: nowrap;
 }
 
 .footer-legal a:hover {
@@ -327,7 +342,17 @@
 .footer-dot {
     font-size: 15px;
     color: #50535a;
-    margin: 0 5px;
+}
+
+@media (max-width: 480px) {
+    .footer-legal {
+        padding: 16px 16px 8px 16px;
+    }
+
+    .footer-legal a {
+        margin: 0 5px;
+        font-size: 0.85em;
+    }
 }
 
 /* Tablet & Mobile Responsive */

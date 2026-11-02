@@ -1,9 +1,9 @@
   /* Modern CSS Variables */
         :root {
-            --primary: #20c997;
-            --primary-dark: #17a689;
-            --primary-light: #5dedd5;
-            --accent: #6366f1;
+            --primary: #FCBC00;
+            --primary-dark: #CF9A00;
+            --primary-light: #FFD54D;
+            --accent: #14141b;
             --success: #10b981;
             --danger: #ef4444;
             --warning: #f59e0b;
@@ -67,7 +67,7 @@
 
         /* Course Header - Compact */
         .course-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #14141b 0%, #2c2c38 100%);
             padding: 70px 20px 40px;
             position: relative;
             overflow: hidden;
@@ -85,7 +85,7 @@
         }
 
         .course-header.purchased {
-            background: linear-gradient(135deg, var(--success) 0%, var(--primary) 100%);
+            background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
         }
 
         .course-header.free {
@@ -329,7 +329,7 @@
             content: '';
             width: 3px;
             height: 22px;
-            background: linear-gradient(135deg, var(--primary), var(--accent));
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
             border-radius: 3px;
         }
 
@@ -404,7 +404,7 @@
         .video-thumbnail {
             width: 100%;
             aspect-ratio: 16/9;
-            background: linear-gradient(135deg, #667eea, #764ba2);
+            background: linear-gradient(135deg, #14141b, #2c2c38);
             background-size: cover;
             background-position: center;
             position: relative;
@@ -484,7 +484,7 @@
         }
 
         .video-badge:not(.locked) {
-            background: linear-gradient(135deg, var(--primary), var(--accent));
+            background: linear-gradient(135deg, var(--accent), #2c2c38);
             color: white;
         }
 
@@ -572,7 +572,7 @@
         }
 
         .modal-header {
-            background: linear-gradient(135deg, var(--primary), var(--accent));
+            background: linear-gradient(135deg, var(--accent), #2c2c38);
             color: white;
             padding: 14px 20px;
             display: flex;

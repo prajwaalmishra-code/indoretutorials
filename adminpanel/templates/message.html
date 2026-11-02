@@ -1,330 +1,181 @@
-<!-- message.html -->
+<!-- message.html: flash message notifications (sitemsg-*), shared by the site and the admin panel -->
 {% if messages %}
-<div class="admin-message-container">
+<div class="sitemsg-stack" role="region" aria-label="Notifications">
     {% for message in messages %}
-    <div class="admin-message admin-message-{{ message.tags }} {% if forloop.first %}admin-message-show{% endif %}" 
-         data-admin-message-id="{{ forloop.counter }}">
-        <div class="admin-message-content">
-            <div class="admin-message-icon">
-                {% if message.tags == 'success' %}
-                    <span class="admin-icon-success">✅</span>
-                {% elif message.tags == 'error' %}
-                    <span class="admin-icon-error">❌</span>
-                {% elif message.tags == 'warning' %}
-                    <span class="admin-icon-warning">⚠️</span>
-                {% elif message.tags == 'info' %}
-                    <span class="admin-icon-info">ℹ️</span>
-                {% else %}
-                    <span class="admin-icon-default">📢</span>
-                {% endif %}
-            </div>
-            <div class="admin-message-text">
-                <div class="admin-message-title">
-                    {% if message.tags == 'success' %}
-                        Success!
-                    {% elif message.tags == 'error' %}
-                        Error!
-                    {% elif message.tags == 'warning' %}
-                        Warning!
-                    {% elif message.tags == 'info' %}
-                        Information
-                    {% else %}
-                        Notification
-                    {% endif %}
-                </div>
-                <div class="admin-message-body">{{ message|safe }}</div>
-            </div>
-            <button class="admin-message-close" onclick="closeAdminMessage({{ forloop.counter }})">
-                <span>&times;</span>
-            </button>
+    {% with level=message.level_tag|default:"info" %}
+    <div class="sitemsg sitemsg-{% if level == 'error' %}error{% elif level == 'warning' %}warning{% elif level == 'success' %}success{% else %}info{% endif %}"
+         role="{% if level == 'error' %}alert{% else %}status{% endif %}" data-sitemsg-id="{{ forloop.counter }}">
+        <div class="sitemsg-icon" aria-hidden="true">
+            {% if level == 'success' %}<i class="fa-solid fa-check"></i>
+            {% elif level == 'error' %}<i class="fa-solid fa-xmark"></i>
+            {% elif level == 'warning' %}<i class="fa-solid fa-exclamation"></i>
+            {% else %}<i class="fa-solid fa-info"></i>{% endif %}
         </div>
-        <div class="admin-message-progress"></div>
+        <div class="sitemsg-text">
+            <div class="sitemsg-title">
+                {% if level == 'success' %}Success{% elif level == 'error' %}Something went wrong{% elif level == 'warning' %}Warning{% else %}Notice{% endif %}
+            </div>
+            <div class="sitemsg-body">{{ message|safe }}</div>
+        </div>
+        <button type="button" class="sitemsg-close" onclick="closeSiteMsg({{ forloop.counter }})" aria-label="Dismiss notification">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+        <div class="sitemsg-progress"></div>
     </div>
+    {% endwith %}
     {% endfor %}
 </div>
 
 <style>
-/* Namespaced admin message styles to avoid conflicts */
-.admin-message-container {
+.sitemsg-stack {
     position: fixed;
-    top: 24px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 99999; /* Higher z-index to ensure visibility */
-    max-width: 420px;
-    width: auto;
-    min-width: 300px;
-    pointer-events: none; /* Allow clicks through container */
+    top: 84px;
+    right: 20px;
+    z-index: 99999;
     display: flex;
     flex-direction: column;
-    align-items: center;
-}
-
-.admin-message {
-    background: rgba(255, 255, 255, 0.75);
-    backdrop-filter: blur(14px) saturate(160%);
-    -webkit-backdrop-filter: blur(14px) saturate(160%);
-    border-radius: 14px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
-    margin-bottom: 12px;
-    opacity: 0;
-    transform: translateY(-16px);
-    transition: opacity 0.4s ease, transform 0.4s ease;
-    overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.4);
-    border-left: 4px solid;
-    pointer-events: auto; /* Enable clicks on messages */
-    font-family: var(--font-sans);
-    width: min(400px, 92vw);
-}
-
-.admin-message.admin-message-show {
-    opacity: 1;
-    transform: translateY(0);
-}
-
-.admin-message.admin-message-hide {
-    opacity: 0;
-    transform: translateY(-10px);
-}
-
-.admin-message-success {
-    border-left-color: var(--ad-success, #10b981);
-    background: rgba(220, 252, 231, 0.65);
-}
-
-.admin-message-error {
-    border-left-color: var(--ad-danger, #ef4444);
-    background: rgba(254, 226, 226, 0.65);
-}
-
-.admin-message-warning {
-    border-left-color: var(--ad-warning, #f59e0b);
-    background: rgba(254, 243, 199, 0.65);
-}
-
-.admin-message-info {
-    border-left-color: var(--ad-accent, #3b82f6);
-    background: rgba(219, 234, 254, 0.65);
-}
-
-.admin-message-default {
-    border-left-color: #6b7280;
-    background: rgba(243, 244, 246, 0.65);
-}
-
-.admin-message-content {
-    display: flex;
-    align-items: flex-start;
-    padding: 16px 18px;
-    gap: 12px;
-}
-
-.admin-message-icon {
-    flex-shrink: 0;
-    font-size: 18px;
-    margin-top: 1px;
-}
-
-.admin-message-text {
-    flex: 1;
-    min-width: 0;
-}
-
-.admin-message-title {
-    font-size: 14px;
-    font-weight: 700;
-    margin-bottom: 4px;
-    color: #1f2937;
-    line-height: 1.2;
-}
-
-.admin-message-body {
-    font-size: 13px;
-    color: #4b5563;
-    line-height: 1.4;
-    word-wrap: break-word;
-}
-
-.admin-message-body strong {
-    font-weight: 600;
-    color: #1f2937;
-}
-
-.admin-message-close {
-    background: none;
-    border: none;
-    font-size: 18px;
-    color: #9ca3af;
-    cursor: pointer;
-    padding: 0;
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
-    flex-shrink: 0;
-    margin-top: -2px;
-}
-
-.admin-message-close:hover {
-    background: rgba(0, 0, 0, 0.1);
-    color: #374151;
-}
-
-.admin-message-progress {
-    height: 3px;
-    background: rgba(0, 0, 0, 0.05);
-    position: relative;
-    overflow: hidden;
-}
-
-.admin-message-progress::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 100%;
-    width: 100%;
-    transform: translateX(-100%);
-    animation: adminMessageProgress 6s linear forwards;
-}
-
-.admin-message-success .admin-message-progress::after {
-    background: var(--ad-success, #10b981);
-}
-
-.admin-message-error .admin-message-progress::after {
-    background: var(--ad-danger, #ef4444);
-}
-
-.admin-message-warning .admin-message-progress::after {
-    background: var(--ad-warning, #f59e0b);
-}
-
-.admin-message-info .admin-message-progress::after {
-    background: var(--ad-accent, #3b82f6);
-}
-
-.admin-message-default .admin-message-progress::after {
-    background: #6b7280;
-}
-
-@keyframes adminMessageProgress {
-    to {
-        transform: translateX(0);
-    }
-}
-
-/* Responsive adjustments */
-@media (max-width: 640px) {
-    .admin-message-container {
-        top: 14px;
-        left: 12px;
-        right: 12px;
-        transform: none;
-        max-width: none;
-    }
-
-    .admin-message {
-        width: 100%;
-    }
-
-    .admin-message-content {
-        padding: 14px 16px;
-    }
-
-    .admin-message-title {
-        font-size: 13px;
-    }
-
-    .admin-message-body {
-        font-size: 12px;
-    }
-}
-
-/* Ensure messages don't interfere with dropdowns or modals */
-.admin-message-container {
+    gap: 10px;
+    width: min(380px, calc(100vw - 32px));
     pointer-events: none;
 }
 
-.admin-message {
+.sitemsg {
+    --sitemsg-tone: #2563eb;
+    --sitemsg-tint: #eff6ff;
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 14px 16px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, .12), 0 2px 6px rgba(15, 23, 42, .06);
+    overflow: hidden;
     pointer-events: auto;
+    font-family: var(--font-sans, inherit);
+    opacity: 0;
+    transform: translateX(24px);
+    transition: opacity .3s ease, transform .3s ease;
+}
+.sitemsg.is-visible { opacity: 1; transform: none; }
+.sitemsg.is-leaving { opacity: 0; transform: translateX(24px); }
+
+.sitemsg-success { --sitemsg-tone: #059669; --sitemsg-tint: #ecfdf5; }
+.sitemsg-error   { --sitemsg-tone: #dc2626; --sitemsg-tint: #fef2f2; }
+.sitemsg-warning { --sitemsg-tone: #d97706; --sitemsg-tint: #fffbeb; }
+.sitemsg-info    { --sitemsg-tone: #2563eb; --sitemsg-tint: #eff6ff; }
+
+.sitemsg-icon {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: var(--sitemsg-tint);
+    color: var(--sitemsg-tone);
+    font-size: 14px;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sitemsg-tone) 22%, transparent);
 }
 
-/* Hover effects */
-.admin-message:hover {
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18), 0 4px 12px rgba(0, 0, 0, 0.1);
+.sitemsg-text { flex: 1; min-width: 0; padding-top: 1px; }
+.sitemsg-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #111827;
+    line-height: 1.3;
+}
+.sitemsg-body {
+    margin-top: 2px;
+    font-size: 13px;
+    color: #4b5563;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+.sitemsg-body strong { color: #111827; font-weight: 600; }
+
+.sitemsg-close {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    margin: -4px -4px 0 0;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: #9ca3af;
+    font-size: 13px;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    transition: background .15s ease, color .15s ease;
+}
+.sitemsg-close:hover { background: #f3f4f6; color: #374151; }
+.sitemsg-close:focus-visible { outline: 2px solid var(--sitemsg-tone); outline-offset: 1px; }
+
+.sitemsg-progress {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 3px;
+    background: var(--sitemsg-tone);
+    transform-origin: left;
+    animation: sitemsgCountdown 6s linear forwards;
+    opacity: .85;
+}
+.sitemsg:hover .sitemsg-progress { animation-play-state: paused; }
+@keyframes sitemsgCountdown { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+
+@media (max-width: 640px) {
+    .sitemsg-stack { top: 12px; right: 16px; left: 16px; width: auto; }
+    .sitemsg { transform: translateY(-16px); }
+    .sitemsg.is-leaving { transform: translateY(-16px); }
 }
 
-.admin-message:hover .admin-message-progress::after {
-    animation-play-state: paused;
+@media (prefers-reduced-motion: reduce) {
+    .sitemsg, .sitemsg.is-leaving { transition: opacity .2s ease; transform: none; }
+    .sitemsg-progress { animation: none; }
 }
 </style>
 
 <script>
-// Namespaced JavaScript to avoid conflicts
-(function() {
-    // Auto-hide messages after 6 seconds
-    document.addEventListener('DOMContentLoaded', function() {
-        const adminMessages = document.querySelectorAll('.admin-message');
-        
-        adminMessages.forEach((message, index) => {
-            // Show message with staggered delay
-            setTimeout(() => {
-                message.classList.add('admin-message-show');
-            }, index * 150);
-            
-            // Auto-hide after 6 seconds (pause on hover)
-            let autoHideTimeout = setTimeout(() => {
-                closeAdminMessage(message.dataset.adminMessageId);
-            }, 6000 + (index * 150));
-            
-            // Pause auto-hide on hover
-            message.addEventListener('mouseenter', () => {
-                clearTimeout(autoHideTimeout);
-            });
-            
-            // Resume auto-hide on mouse leave
-            message.addEventListener('mouseleave', () => {
-                autoHideTimeout = setTimeout(() => {
-                    closeAdminMessage(message.dataset.adminMessageId);
-                }, 2000); // 2 seconds after mouse leave
-            });
-        });
-    });
+(function () {
+    // Emoji and pictograph characters, removed so every message reads as plain text.
+    var EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B50}\u{2B55}\u{FE0F}]\s?/gu;
 
-    // Global function for closing admin messages
-    window.closeAdminMessage = function(messageId) {
-        const message = document.querySelector(`[data-admin-message-id="${messageId}"]`);
-        if (message) {
-            message.classList.add('admin-message-hide');
-            setTimeout(() => {
-                if (message.parentNode) {
-                    message.parentNode.removeChild(message);
-                    
-                    // Remove container if no messages left
-                    const container = document.querySelector('.admin-message-container');
-                    if (container && !container.querySelector('.admin-message')) {
-                        container.remove();
-                    }
-                }
-            }, 400);
-        }
+    window.closeSiteMsg = function (id) {
+        var el = document.querySelector('[data-sitemsg-id="' + id + '"]');
+        if (!el || el.classList.contains('is-leaving')) return;
+        el.classList.add('is-leaving');
+        setTimeout(function () {
+            var stack = el.parentNode;
+            el.remove();
+            if (stack && !stack.querySelector('.sitemsg')) stack.remove();
+        }, 300);
     };
 
-    // Close all messages when pressing Escape key
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
-            const adminMessages = document.querySelectorAll('.admin-message');
-            adminMessages.forEach((message, index) => {
-                setTimeout(() => {
-                    closeAdminMessage(message.dataset.adminMessageId);
-                }, index * 50);
+    function init() {
+        document.querySelectorAll('.sitemsg').forEach(function (el, index) {
+            var body = el.querySelector('.sitemsg-body');
+            body.innerHTML = body.innerHTML.replace(EMOJI, '').trim();
+
+            setTimeout(function () { el.classList.add('is-visible'); }, 60 + index * 120);
+
+            var id = el.dataset.sitemsgId;
+            var timer = setTimeout(function () { closeSiteMsg(id); }, 6000 + index * 120);
+            el.addEventListener('mouseenter', function () { clearTimeout(timer); });
+            el.addEventListener('mouseleave', function () {
+                timer = setTimeout(function () { closeSiteMsg(id); }, 2000);
             });
-        }
+        });
+    }
+
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+    else init();
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') document.querySelectorAll('.sitemsg').forEach(function (t) { closeSiteMsg(t.dataset.sitemsgId); });
     });
 })();
 </script>

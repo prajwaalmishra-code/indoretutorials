@@ -37,7 +37,7 @@
               <!-- Language tag + date in one row -->
               <div class="lc-meta-row">
                 <span class="lc-lang-pill"><i class="fa fa-language"></i> {{ course.language_display }}</span>
-                <span class="lc-date-pill"><i class="fa fa-calendar-o"></i> {{ course.start_date|date:"d M" }} – {{ course.end_date|date:"d M Y" }}</span>
+                <span class="lc-date-pill"><i class="fa fa-calendar"></i> {{ course.start_date|date:"d M" }} – {{ course.end_date|date:"d M Y" }}</span>
               </div>
 
               <!-- Price -->
@@ -62,7 +62,7 @@
                 {% if course.next_sessions %}
                   {% with course.next_sessions.0 as s %}
                   <div class="lc-session-pill">
-                    <i class="fa fa-clock-o"></i>
+                    <i class="fa fa-clock"></i>
                     <span class="lc-sdate">{{ s.scheduled_datetime|date:"D, d M" }}</span>
                     <span class="lc-sdivider">·</span>
                     <span class="lc-stime">{{ s.scheduled_datetime|time:"g:i a" }}</span>
@@ -70,7 +70,7 @@
                   {% endwith %}
                 {% else %}
                   <div class="lc-session-pill lc-session-none">
-                    <i class="fa fa-calendar-times-o"></i> No upcoming sessions
+                    <i class="fa fa-calendar-times"></i> No upcoming sessions
                   </div>
                 {% endif %}
               </div>

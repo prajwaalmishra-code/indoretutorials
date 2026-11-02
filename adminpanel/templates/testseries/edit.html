@@ -25,15 +25,7 @@
             <label for="title">Test Series Title *</label>
             <p><input type="text" id="title" name="title" value="{{ test_series.title }}" required></p>
 
-            <label for="category">Category *</label>
-            <p>
-                <select id="category" name="category" required>
-                    <option value="">Select Category</option>
-                    {% for category in categories %}
-                        <option value="{{ category.id }}" {% if test_series.category.id == category.id %}selected{% endif %}>{{ category.name }}</option>
-                    {% endfor %}
-                </select>
-            </p>
+            {% include 'testseries/_board_fields.html' %}
 
             <label for="description">Description *</label>
             <p><textarea id="description" name="description" rows="4" required>{{ test_series.description }}</textarea></p>

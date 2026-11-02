@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 from django.core.validators import MinValueValidator , FileExtensionValidator, RegexValidator
 from django.utils import timezone
@@ -22,6 +23,16 @@ def hex_to_rgb_str(hex_color, fallback=(37, 99, 235)):
         return f"{fallback[0]}, {fallback[1]}, {fallback[2]}"
 
 
+def _contrast(rgb_a, rgb_b):
+    """WCAG contrast ratio between two (r, g, b) colors."""
+    def luminance(rgb):
+        r, g, b = (c / 255 for c in rgb)
+        r, g, b = (c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4 for c in (r, g, b))
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b
+    hi, lo = sorted((luminance(rgb_a), luminance(rgb_b)), reverse=True)
+    return (hi + 0.05) / (lo + 0.05)
+
+
 #notifications models
 class Notification(models.Model):
     title = models.CharField(max_length=200, help_text="Notification title")
@@ -31,7 +42,11 @@ class Notification(models.Model):
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+    read_by = models.ManyToManyField(
+        settings.AUTH_USER_MODEL, blank=True, related_name='read_admin_notifications',
+        help_text="Users who have marked this broadcast notification as read"
+    )
+
     class Meta:
         ordering = ['-scheduled_time', '-created_at']
         verbose_name = "Notification"
@@ -384,7 +399,7 @@ class CTASection(models.Model):
     button_text = models.CharField(max_length=100, help_text="Button text")
     button_link = models.URLField(blank=True, help_text="Optional button link")
     button_color = models.CharField(
-        max_length=7, default='#D4AF37', help_text="Hex color code for the CTA button (e.g., #D4AF37)"
+        max_length=7, default='#FCBC00', help_text="Hex color code for the CTA button (e.g., #D4AF37)"
     )
     background_image = models.ImageField(
         upload_to='cta/', blank=True, null=True, help_text="Optional background image (recommended 1920x600px)"
@@ -403,7 +418,13 @@ class CTASection(models.Model):
     @property
     def button_color_rgb(self):
         """button_color as an 'r, g, b' triplet, for use in the button's shadow/hover styling."""
-        return hex_to_rgb_str(self.button_color or '#D4AF37', fallback=(212, 175, 55))
+        return hex_to_rgb_str(self.button_color or '#FCBC00', fallback=(252, 188, 0))
+
+    @property
+    def button_text_color(self):
+        """Ink or white, whichever reads better on button_color."""
+        rgb = tuple(int(c) for c in self.button_color_rgb.split(', '))
+        return '#14141b' if _contrast(rgb, (20, 20, 27)) >= _contrast(rgb, (255, 255, 255)) else '#ffffff'
 
 
 class AboutUsSection(models.Model):
@@ -478,7 +499,7 @@ class ThemeSettings(models.Model):
     """Site-wide brand color, applied via CSS custom properties on every page."""
     primary_color = models.CharField(
         max_length=7,
-        default='#D4AF37',
+        default='#FCBC00',
         help_text="Main brand color used for buttons, links, and hover states across the site."
     )
     updated_at = models.DateTimeField(auto_now=True)
@@ -492,20 +513,37 @@ class ThemeSettings(models.Model):
 
     @property
     def primary_color_rgb(self):
-        return hex_to_rgb_str(self.primary_color, fallback=(212, 175, 55))
+        return hex_to_rgb_str(self.primary_color, fallback=(252, 188, 0))
 
     @property
     def primary_color_dark(self):
         """A ~18% darker shade of primary_color, for hover/active states."""
-        hex_color = (self.primary_color or '#D4AF37').lstrip('#')
+        hex_color = (self.primary_color or '#FCBC00').lstrip('#')
         if len(hex_color) == 3:
             hex_color = ''.join(c * 2 for c in hex_color)
         try:
             r, g, b = (int(hex_color[i:i + 2], 16) for i in (0, 2, 4))
         except ValueError:
-            r, g, b = (212, 175, 55)
+            r, g, b = (252, 188, 0)
         r, g, b = (max(0, round(c * 0.82)) for c in (r, g, b))
         return f"#{r:02x}{g:02x}{b:02x}"
+
+    def _rgb(self):
+        return tuple(int(c) for c in self.primary_color_rgb.split(', '))
+
+    @property
+    def primary_color_text(self):
+        """primary_color darkened until it reads as text on white (WCAG AA, 4.5:1)."""
+        rgb = self._rgb()
+        while _contrast(rgb, (255, 255, 255)) < 4.5:
+            rgb = tuple(round(c * 0.94) for c in rgb)
+        return '#%02x%02x%02x' % rgb
+
+    @property
+    def primary_color_on(self):
+        """Text color for content placed on a primary_color background."""
+        ink = (20, 20, 27)
+        return '#14141b' if _contrast(self._rgb(), ink) >= _contrast(self._rgb(), (255, 255, 255)) else '#ffffff'
 
     def save(self, *args, **kwargs):
         if not self.pk and ThemeSettings.objects.exists():
@@ -539,6 +577,18 @@ class AuthPageSettings(models.Model):
         blank=True,
         null=True,
         help_text="Side image for the signup page. Recommended size: 1000x1200px. Falls back to the default image if left blank."
+    )
+    login_image_mobile = models.ImageField(
+        upload_to='auth_pages/',
+        blank=True,
+        null=True,
+        help_text="Optional wide image shown above the login form on phones and tablets. Recommended size: 1200x480px."
+    )
+    signup_image_mobile = models.ImageField(
+        upload_to='auth_pages/',
+        blank=True,
+        null=True,
+        help_text="Optional wide image shown above the signup form on phones and tablets. Recommended size: 1200x480px."
     )
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -694,6 +744,25 @@ class FooterLegalLink(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class ContactSubmission(models.Model):
+    """Leads captured from the homepage 'Contact Us' form."""
+    name = models.CharField(max_length=150)
+    email = models.EmailField()
+    phone = models.CharField(max_length=20, blank=True)
+    subject = models.CharField(max_length=200, blank=True)
+    message = models.TextField()
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "Contact Submission"
+        verbose_name_plural = "Contact Submissions"
+
+    def __str__(self):
+        return f"{self.name} ({self.email}) - {self.created_at:%Y-%m-%d}"
 
 
 class ExtraPage(models.Model):

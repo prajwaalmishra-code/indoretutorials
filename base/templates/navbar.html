@@ -27,20 +27,55 @@
     <div class="navbar-actions-wrapper">
         <div class="navbar-dropdown">
             <button class="navbar-link-btn">Explore Exams <span class="fa fa-caret-down"></span></button>
-            <div class="navbar-dropdown-content">
-                {% for category in navbar_categories %}
-                    <a href="{% url 'category_detail' category.slug %}">
-                        <div class="navbar-category-icon" style="background: rgba({{ category.icon_color_rgb }}, 0.12); color: {{ category.icon_color }};">
-                            <i class="fa fa-{{ category.icon|default:'graduation-cap' }}"></i>
-                        </div>
-                        {{ category.name }}
-                    </a>
-                {% empty %}
+            <div class="navbar-dropdown-content exam-menu" id="examMenu">
+                {% if navbar_category_groups %}
+                <div class="exam-menu-top">
+                    <label class="exam-menu-search">
+                        <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                        <input type="search" id="examMenuSearch" placeholder="Search exams, boards, olympiads..." aria-label="Search exams" autocomplete="off">
+                    </label>
+                </div>
+                <div class="exam-menu-body">
+                    <div class="exam-menu-groups" role="tablist" aria-label="Exam categories">
+                        {% for group in navbar_category_groups %}
+                            <button type="button" class="exam-menu-group {% if forloop.first %}is-active{% endif %}" role="tab"
+                                    data-group="{{ group.key }}" aria-selected="{% if forloop.first %}true{% else %}false{% endif %}">
+                                <i class="fa-solid fa-{{ group.icon }}"></i>
+                                <span>{{ group.label }}</span>
+                                <em>{{ group.categories|length }}</em>
+                            </button>
+                        {% endfor %}
+                    </div>
+                    <div class="exam-menu-panels">
+                        {% for group in navbar_category_groups %}
+                            <div class="exam-menu-panel" data-group="{{ group.key }}" role="tabpanel" {% if not forloop.first %}hidden{% endif %}>
+                                <div class="exam-menu-panel-title">{{ group.label }}</div>
+                                <div class="exam-menu-grid">
+                                    {% for category in group.categories %}
+                                        <a href="{% url 'category_detail' category.slug %}" class="exam-menu-link" data-name="{{ category.name|lower }}">
+                                            <span class="exam-menu-icon" style="background: rgba({{ category.icon_color_rgb }}, 0.12); color: {{ category.icon_color }};">
+                                                <i class="fa fa-{{ category.icon|default:'graduation-cap' }}"></i>
+                                            </span>
+                                            <span class="exam-menu-name">{{ category.name }}</span>
+                                        </a>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                        <p class="exam-menu-empty" id="examMenuEmpty" hidden>No exam matches your search.</p>
+                    </div>
+                </div>
+                <div class="exam-menu-foot">
+                    <a href="{% url 'all_test_series' %}" class="exam-menu-foot-link"><i class="fa-solid fa-layer-group"></i> All test series</a>
+                    <a href="{% url 'all_test_series' %}?paper=pyp" class="exam-menu-foot-link"><i class="fa-solid fa-clock-rotate-left"></i> Previous year papers</a>
+                    <a href="{% url 'all_test_series' %}?paper=subject" class="exam-menu-foot-link"><i class="fa-solid fa-book"></i> Subject-wise tests</a>
+                </div>
+                {% else %}
                     <div class="navbar-dropdown-empty">
-                        <i class="fa fa-folder-open-o" style="font-size: 32px; color: #ddd; margin-bottom: 8px;"></i>
+                        <i class="fa fa-folder-open" style="font-size: 32px; color: #ddd; margin-bottom: 8px;"></i>
                         <p>No categories available</p>
                     </div>
-                {% endfor %}
+                {% endif %}
             </div>
         </div>
 
@@ -99,6 +134,9 @@
                 </a>
                 <a href="{% url 'my_purchases' %}">
                     <i class="fa fa-shopping-bag"></i> My Purchases
+                </a>
+                <a href="{% url 'my_test_results' %}">
+                    <i class="fa fa-chart-line"></i> My Results
                 </a>
                 <a href="#" id="viewCouponsBtn">
                     <i class="fa fa-ticket"></i> My Coupons
@@ -188,6 +226,9 @@
             <a href="{% url 'my_purchases' %}">
                 <i class="fa fa-shopping-bag"></i> My Purchases
             </a>
+            <a href="{% url 'my_test_results' %}">
+                <i class="fa fa-chart-line"></i> My Results
+            </a>
             <button id="mobileViewCouponsBtn">
                 <i class="fa fa-ticket"></i> My Coupons
             </button>
@@ -244,14 +285,14 @@
                 </a>
             {% endif %}
             
-            <a href="{% url 'logout_user' %}" style="margin-top: 10px; background: #ffe8e8; color: var(--brand-primary);">
+            <a href="{% url 'logout_user' %}" style="margin-top: 10px; background: #ffe8e8; color: var(--brand-primary-text);">
                 <i class="fa fa-sign-out"></i> Log Out
             </a>
         {% else %}
             <a href="{% url 'login' %}">
                 <i class="fa fa-sign-in"></i> Log In
             </a>
-            <a href="{% url 'signup' %}" style="background: var(--brand-primary); color: white;">
+            <a href="{% url 'signup' %}" style="background: var(--brand-primary); color: var(--brand-on-primary, #14141b);">
                 <i class="fa fa-user-plus"></i> Sign Up
             </a>
             
@@ -327,12 +368,13 @@ document.addEventListener('DOMContentLoaded', function() {
             e.stopPropagation();
             isDesktopOpen = !isDesktopOpen;
             notificationsDropdown.classList.toggle('active', isDesktopOpen);
-            if (isDesktopOpen && isAuthenticated) {
-                loadNotifications('desktop');
+            if (isDesktopOpen) {
+                closeHoverDropdowns();
+                if (isAuthenticated) loadNotifications('desktop');
             }
         });
     }
-    
+
     // Mobile notification toggle
     if (mobileNotificationBtn) {
         mobileNotificationBtn.addEventListener('click', function(e) {
@@ -340,8 +382,9 @@ document.addEventListener('DOMContentLoaded', function() {
             e.stopPropagation();
             isMobileOpen = !isMobileOpen;
             mobileNotificationsDropdown.classList.toggle('active', isMobileOpen);
-            if (isMobileOpen && isAuthenticated) {
-                loadNotifications('mobile');
+            if (isMobileOpen) {
+                closeHoverDropdowns();
+                if (isAuthenticated) loadNotifications('mobile');
             }
         });
     }
@@ -364,7 +407,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 updateBadges(data.unread_count);
                 if (data.notifications.length === 0) {
-                    targetList.innerHTML = '<div class="notifications-empty"><i class="fa fa-bell-o"></i><p>No notifications</p></div>';
+                    targetList.innerHTML = '<div class="notifications-empty"><i class="fa fa-bell"></i><p>No notifications</p></div>';
                 } else {
                     renderNotifications(data.notifications, targetList);
                 }
@@ -412,15 +455,11 @@ document.addEventListener('DOMContentLoaded', function() {
             item.addEventListener('click', function() {
                 const id = this.getAttribute('data-id');
                 const link = this.getAttribute('data-link');
-                const isAdmin = this.getAttribute('data-is-admin') === 'true';
-                
-                if (!isAdmin) {
+
+                if (this.classList.contains('unread')) {
                     markAsRead(id, link, this);
-                } else {
-                    // For admin notifications, just navigate to link
-                    if (link && link !== '#') {
-                        window.location.href = link;
-                    }
+                } else if (link && link !== '#') {
+                    window.location.href = link;
                 }
             });
         });
@@ -463,8 +502,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }).then(r => {
                     if (r.ok) {
-                        // Only remove unread class from non-admin notifications
-                        document.querySelectorAll('.notification-item.unread:not(.admin-notification)').forEach(item => {
+                        document.querySelectorAll('.notification-item.unread').forEach(item => {
                             item.classList.remove('unread');
                         });
                         updateBadges(0);
@@ -500,7 +538,73 @@ document.addEventListener('DOMContentLoaded', function() {
                 .then(data => updateBadges(data.unread_count));
         }, 60000);
     }
-    
+
+    // ===== Explore Exams / User Profile dropdowns =====
+    // Click-toggle (works on touch too) plus hover-with-grace-period on desktop, so
+    // a normal mouse move from the button down into the menu doesn't lose hover in the gap.
+    // Also ensures only one navbar dropdown (these two, or Notifications) is open at a time.
+    function closeHoverDropdowns(exceptWrapper) {
+        document.querySelectorAll('.navbar-dropdown.dropdown-open').forEach(function(el) {
+            if (el !== exceptWrapper) el.classList.remove('dropdown-open');
+        });
+    }
+
+    function closeNotificationDropdowns() {
+        if (notificationsDropdown) notificationsDropdown.classList.remove('active');
+        if (mobileNotificationsDropdown) mobileNotificationsDropdown.classList.remove('active');
+        isDesktopOpen = false;
+        isMobileOpen = false;
+    }
+
+    // Desktop mice get hover-to-open; touch devices get tap-to-toggle. Checking this up
+    // front avoids a click right after a hover-open immediately toggling itself shut again.
+    const supportsHover = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+
+    document.querySelectorAll('.navbar-dropdown').forEach(function(wrapper) {
+        const trigger = wrapper.querySelector(':scope > button, :scope > a');
+        let closeTimer = null;
+
+        function openThis() {
+            clearTimeout(closeTimer);
+            closeHoverDropdowns(wrapper);
+            closeNotificationDropdowns();
+            wrapper.classList.add('dropdown-open');
+        }
+        function closeThis() {
+            wrapper.classList.remove('dropdown-open');
+        }
+        function scheduleClose() {
+            clearTimeout(closeTimer);
+            closeTimer = setTimeout(closeThis, 350);
+        }
+
+        if (supportsHover) {
+            wrapper.addEventListener('mouseenter', openThis);
+            wrapper.addEventListener('mouseleave', scheduleClose);
+        }
+        wrapper.addEventListener('click', function(e) { e.stopPropagation(); });
+
+        if (trigger) {
+            trigger.addEventListener('click', function(e) {
+                const isRealLink = trigger.tagName === 'A' && trigger.getAttribute('href') && trigger.getAttribute('href') !== '#';
+                if (isRealLink) return;
+                e.preventDefault();
+                if (supportsHover) {
+                    // Hover already opens it; a click (e.g. via keyboard) should just affirm that.
+                    openThis();
+                } else if (wrapper.classList.contains('dropdown-open')) {
+                    closeThis();
+                } else {
+                    openThis();
+                }
+            });
+        }
+    });
+
+    document.addEventListener('click', function() {
+        closeHoverDropdowns();
+    });
+
     // Mobile menu
     const mobileToggle = document.getElementById('navbarMobileToggle');
     const mobileMenu = document.getElementById('navbarMobileMenu');
@@ -545,6 +649,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Search functionality
     const searchInput = document.getElementById('navbarSearchInput');
     const suggestionsDiv = document.getElementById('navbarSearchSuggestions');
+    const DEFAULT_SUGGESTION_THUMB = "{% static 'img/default-thumb.jpg' %}";
     let searchTimeout;
     
     if (searchInput) {
@@ -585,35 +690,42 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
     
+    function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str == null ? '' : String(str);
+        return div.innerHTML;
+    }
+
     function displaySuggestions(suggestions, query) {
         if (suggestions.length === 0) {
-            suggestionsDiv.innerHTML = '<div class="navbar-no-suggestions">No results</div>';
+            suggestionsDiv.innerHTML = '<div class="navbar-no-suggestions"><i class="fa fa-magnifying-glass"></i> No results found for "' + escapeHtml(query) + '"</div>';
             return;
         }
-        
+
         let html = '';
         suggestions.forEach(item => {
-            const thumb = item.type === 'Category' 
-                ? '<div class="navbar-suggestion-thumbnail" style="display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);"><i class="fa fa-folder-open" style="font-size:24px;color:white;"></i></div>'
-                : item.thumbnail 
-                    ? `<img src="${item.thumbnail}" class="navbar-suggestion-thumbnail" onerror="this.style.display='none';">`
-                    : '<div class="navbar-suggestion-thumbnail" style="display:flex;align-items:center;justify-content:center;background:#f0f0f0;"><i class="fa fa-file-text-o" style="font-size:24px;color:#999;"></i></div>';
-            
+            const typeClass = item.type.toLowerCase().replace(/\s+/g, '-');
+            const thumb = item.type === 'Category'
+                ? '<div class="navbar-suggestion-thumbnail navbar-suggestion-thumbnail-category"><i class="fa fa-folder-open"></i></div>'
+                : `<img src="${escapeHtml(item.thumbnail || DEFAULT_SUGGESTION_THUMB)}" alt="" class="navbar-suggestion-thumbnail" loading="lazy" onerror="this.onerror=null;this.src='${DEFAULT_SUGGESTION_THUMB}';">`;
+            const isFree = item.price === 'Free';
+
             html += `
                 <a href="${item.url}" class="navbar-suggestion-item">
                     ${thumb}
                     <div class="navbar-suggestion-content">
-                        <span class="navbar-suggestion-type ${item.type === 'Category' ? 'category' : ''}">${item.type}</span>
-                        <p class="navbar-suggestion-name">${item.name}</p>
+                        <span class="navbar-suggestion-type ${typeClass}">${escapeHtml(item.type)}</span>
+                        <p class="navbar-suggestion-name">${escapeHtml(item.name)}</p>
                         <div class="navbar-suggestion-meta">
-                            ${item.price ? `<span class="navbar-suggestion-price">${item.price}</span><span>•</span>` : ''}
-                            <span>${item.category}</span>
+                            ${item.price ? `<span class="navbar-suggestion-price ${isFree ? 'is-free' : ''}">${escapeHtml(item.price)}</span><span class="navbar-suggestion-dot">&bull;</span>` : ''}
+                            <span class="navbar-suggestion-category">${escapeHtml(item.category)}</span>
                         </div>
                     </div>
+                    <i class="fa fa-chevron-right navbar-suggestion-arrow"></i>
                 </a>
             `;
         });
-        
+
         html += `<div class="navbar-view-all-results" onclick="window.location.href='/search/?q=${encodeURIComponent(query)}'">View All Results <i class="fa fa-arrow-right"></i></div>`;
         suggestionsDiv.innerHTML = html;
     }
@@ -624,4 +736,133 @@ document.addEventListener('DOMContentLoaded', function() {
         navbar?.classList.toggle('scrolled', window.scrollY > 50);
     });
 });
+</script>
+
+<style>
+    /* Explore Exams mega menu */
+    .navbar-dropdown-content.exam-menu {
+        width: min(780px, calc(100vw - 32px)); min-width: 0; max-height: none; overflow: hidden;
+        padding: 0; border-radius: 16px; border-color: #e7e9f0;
+        box-shadow: 0 20px 50px rgba(17, 24, 39, .16);
+    }
+    .navbar-dropdown.dropdown-open .exam-menu { display: flex; flex-direction: column; }
+    .exam-menu [hidden] { display: none !important; }
+    .exam-menu-top { padding: 12px; border-bottom: 1px solid #eef0f4; background: #fafbfc; }
+    .exam-menu-search {
+        display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 12px;
+        border: 1px solid #e5e7eb; border-radius: 10px; background: #fff; cursor: text;
+    }
+    .exam-menu-search i { color: #9ca3af; font-size: 13px; }
+    .exam-menu-search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: 14px; color: #111827; }
+    .exam-menu-search:focus-within { border-color: var(--brand-primary); box-shadow: 0 0 0 3px rgba(var(--brand-primary-rgb), .15); }
+
+    .exam-menu-body { display: grid; grid-template-columns: 220px 1fr; height: min(420px, 60vh); }
+    .exam-menu-groups { overflow-y: auto; padding: 8px; border-right: 1px solid #eef0f4; background: #fafbfc; }
+    .exam-menu-group {
+        width: 100%; display: flex; align-items: center; gap: 10px; padding: 9px 10px; margin-bottom: 2px;
+        border: 0; border-radius: 9px; background: transparent; cursor: pointer; text-align: left;
+        font: inherit; font-size: 13.5px; font-weight: 600; color: #374151;
+    }
+    .exam-menu-group i { width: 16px; text-align: center; color: #9ca3af; font-size: 13px; }
+    .exam-menu-group span { flex: 1; min-width: 0; }
+    .exam-menu-group em { font-style: normal; font-size: 11px; font-weight: 700; color: #6b7280; background: #eef0f4; padding: 1px 7px; border-radius: 999px; }
+    .exam-menu-group:hover { background: #fff; color: #111827; }
+    .exam-menu-group.is-active { background: #fff; color: #111827; box-shadow: 0 1px 3px rgba(17, 24, 39, .08); }
+    .exam-menu-group.is-active i { color: var(--brand-primary-text); }
+
+    .exam-menu-panels { overflow-y: auto; padding: 14px 16px; }
+    .exam-menu-panel + .exam-menu-panel { margin-top: 16px; }
+    .exam-menu-panel-title { margin-bottom: 10px; font-size: 11.5px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: .06em; }
+    .exam-menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); gap: 6px; }
+    .navbar-dropdown-content.exam-menu a.exam-menu-link {
+        display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px;
+        border: 1px solid transparent; font-size: 13.5px; font-weight: 600; color: #1f2937;
+    }
+    .navbar-dropdown-content.exam-menu a.exam-menu-link:hover { background: #fff8f0; border-color: #f3e8d6; color: #111827; }
+    .exam-menu-icon { width: 30px; height: 30px; flex-shrink: 0; border-radius: 8px; display: grid; place-items: center; font-size: 13px; }
+    .exam-menu-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .exam-menu-empty { margin: 24px 0; text-align: center; color: #6b7280; font-size: 14px; }
+
+    .exam-menu-foot { display: flex; flex-wrap: wrap; gap: 4px 16px; padding: 10px 16px; border-top: 1px solid #eef0f4; background: #fafbfc; }
+    .navbar-dropdown-content.exam-menu a.exam-menu-foot-link {
+        display: inline-flex; align-items: center; gap: 7px; padding: 4px 0; background: none;
+        font-size: 13px; font-weight: 700; color: #374151;
+    }
+    .navbar-dropdown-content.exam-menu a.exam-menu-foot-link:hover { background: none; color: var(--brand-primary-text); }
+    .exam-menu-foot-link i { color: var(--brand-primary-text); }
+
+    .exam-menu.is-searching .exam-menu-body { grid-template-columns: 1fr; }
+    .exam-menu.is-searching .exam-menu-groups { display: none; }
+
+    @media (max-width: 720px) {
+        .exam-menu-body { grid-template-columns: 1fr; height: min(460px, 65vh); }
+        .exam-menu-groups { display: flex; gap: 4px; overflow-x: auto; border-right: 0; border-bottom: 1px solid #eef0f4; }
+        .exam-menu-group { width: auto; flex-shrink: 0; margin: 0; }
+        .exam-menu-group em { display: none; }
+    }
+</style>
+
+<script>
+(function () {
+    var menu = document.getElementById('examMenu');
+    if (!menu || !menu.querySelector('.exam-menu-group')) return;
+    var groups = Array.prototype.slice.call(menu.querySelectorAll('.exam-menu-group'));
+    var panels = Array.prototype.slice.call(menu.querySelectorAll('.exam-menu-panel'));
+    var search = document.getElementById('examMenuSearch');
+    var empty = document.getElementById('examMenuEmpty');
+    var activeKey = groups[0].dataset.group;
+
+    function showGroup(key) {
+        activeKey = key;
+        groups.forEach(function (g) {
+            var on = g.dataset.group === key;
+            g.classList.toggle('is-active', on);
+            g.setAttribute('aria-selected', on ? 'true' : 'false');
+        });
+        panels.forEach(function (p) { p.hidden = p.dataset.group !== key; });
+        menu.querySelector('.exam-menu-panels').scrollTop = 0;
+    }
+
+    function filter(raw) {
+        var query = raw.trim().toLowerCase();
+        menu.classList.toggle('is-searching', !!query);
+        var total = 0;
+        panels.forEach(function (panel) {
+            var shown = 0;
+            panel.querySelectorAll('.exam-menu-link').forEach(function (link) {
+                var hit = !query || link.dataset.name.indexOf(query) !== -1;
+                link.hidden = !hit;
+                if (hit) shown++;
+            });
+            panel.hidden = query ? shown === 0 : panel.dataset.group !== activeKey;
+            total += shown;
+        });
+        empty.hidden = total > 0;
+    }
+
+    groups.forEach(function (g) {
+        // Desktop: hovering a section previews it; a click works everywhere.
+        g.addEventListener('mouseenter', function () { if (!search.value) showGroup(g.dataset.group); });
+        g.addEventListener('click', function () {
+            search.value = '';
+            filter('');
+            showGroup(g.dataset.group);
+        });
+    });
+    search.addEventListener('input', function () { filter(search.value); });
+
+    // Keep the menu inside the window wherever the Explore Exams button sits.
+    var wrapper = menu.closest('.navbar-dropdown');
+    function fitToWindow() {
+        if (!wrapper.classList.contains('dropdown-open')) return;
+        menu.style.left = '0px';
+        var rect = menu.getBoundingClientRect();
+        var shift = 0;
+        if (rect.right > window.innerWidth - 16) shift = window.innerWidth - 16 - rect.right;
+        if (rect.left + shift < 16) shift = 16 - rect.left;
+        menu.style.left = shift + 'px';
+    }
+    new MutationObserver(fitToWindow).observe(wrapper, { attributes: true, attributeFilter: ['class'] });
+    window.addEventListener('resize', fitToWindow);
+})();
 </script>

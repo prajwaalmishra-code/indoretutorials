@@ -11,6 +11,8 @@
     <!-- Razorpay Checkout -->
     <script src="https://checkout.razorpay.com/v1/checkout.js" defer></script>
     
+    {% include "partials/theme_vars.html" %}
+    
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
@@ -39,11 +41,11 @@
         }
 
         .course-header.free {
-            background: linear-gradient(135deg, var(--success) 0%, #20c997 100%);
+            background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
         }
 
         .course-header.purchased {
-            background: linear-gradient(135deg, #20c997 0%, #17a2b8 100%);
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
         }
 
         .course-header .container {

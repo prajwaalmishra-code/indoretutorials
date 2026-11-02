@@ -1,0 +1,498 @@
+<!-- Tutor: AI teacher chat. Talks to /api/tutor/, which relays to the AI API with the server-side key. -->
+<div class="tutor" id="tutor" data-endpoint="{% url 'tutor_chat' %}" data-csrf="{{ csrf_token }}"
+     data-name="{% if user.is_authenticated %}{{ user.first_name }}{% endif %}">
+
+  <div class="tutor-teaser" id="tutor-teaser" hidden>
+    <button type="button" class="tutor-teaser-close" aria-label="Dismiss">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+    <strong>Hi, I'm Tutor</strong>
+    <span>Your AI teacher. Stuck on a doubt? Ask me anything.</span>
+  </div>
+
+  <button type="button" class="tutor-launcher" id="tutor-launcher" aria-controls="tutor-panel" aria-expanded="false">
+    <span class="tutor-launcher-avatar"><i class="fa-solid fa-chalkboard-user"></i></span>
+    <span class="tutor-launcher-text">Ask Tutor</span>
+  </button>
+
+  <section class="tutor-panel" id="tutor-panel" role="dialog" aria-label="Chat with Tutor, your AI teacher" hidden>
+    <header class="tutor-head">
+      <span class="tutor-avatar"><i class="fa-solid fa-chalkboard-user"></i></span>
+      <div class="tutor-head-text">
+        <strong>Tutor</strong>
+        <span><i class="tutor-online"></i> Your AI teacher &middot; online</span>
+      </div>
+      <button type="button" class="tutor-icon-btn" id="tutor-reset" title="Start a new chat" aria-label="Start a new chat">
+        <i class="fa-solid fa-rotate-left"></i>
+      </button>
+      <button type="button" class="tutor-icon-btn" id="tutor-close" title="Close" aria-label="Close chat">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </header>
+
+    <div class="tutor-body" id="tutor-body" aria-live="polite">
+      <div class="tutor-welcome" id="tutor-welcome">
+        <span class="tutor-welcome-avatar"><i class="fa-solid fa-chalkboard-user"></i></span>
+        <h3 id="tutor-hello">Hi, I'm Tutor</h3>
+        <p>Your AI teacher, here 24/7. I can help you:</p>
+        <ul class="tutor-skills">
+          <li><i class="fa-solid fa-lightbulb"></i> Understand any concept simply</li>
+          <li><i class="fa-solid fa-square-root-variable"></i> Solve doubts step by step</li>
+          <li><i class="fa-solid fa-list-check"></i> Practise with quiz questions</li>
+          <li><i class="fa-solid fa-calendar-check"></i> Plan study and revision</li>
+          <li><i class="fa-solid fa-trophy"></i> Prepare for boards, JEE, NEET, SSC</li>
+          <li><i class="fa-solid fa-pen-to-square"></i> Write notes and summaries</li>
+        </ul>
+        <p class="tutor-try">Try asking</p>
+        <div class="tutor-chips">
+          <button type="button" class="tutor-chip">Explain photosynthesis simply</button>
+          <button type="button" class="tutor-chip">Solve 2x + 5 = 17 step by step</button>
+          <button type="button" class="tutor-chip">Give me 5 MCQs on Indian Polity</button>
+          <button type="button" class="tutor-chip">Make a 30-day NEET revision plan</button>
+          <button type="button" class="tutor-chip">How do I manage time in exams?</button>
+        </div>
+      </div>
+      <div class="tutor-messages" id="tutor-messages"></div>
+    </div>
+
+    <form class="tutor-form" id="tutor-form">
+      <textarea id="tutor-input" rows="1" maxlength="2000" placeholder="Ask Tutor a question..." aria-label="Your question"></textarea>
+      <button type="submit" class="tutor-send" id="tutor-send" aria-label="Send">
+        <i class="fa-solid fa-paper-plane"></i>
+      </button>
+    </form>
+    <p class="tutor-note">Tutor can make mistakes. Double-check important answers.</p>
+  </section>
+</div>
+
+<style>
+  .tutor {
+    --tutor-ink: #111827;
+    --tutor-muted: #6b7280;
+    --tutor-line: #e7e9f0;
+    --tutor-accent: var(--brand-primary, #D4AF37);
+    --tutor-accent-dark: var(--brand-primary-dark, #ae902d);
+    --tutor-bottom: 20px;
+    font-family: var(--font-sans, inherit);
+  }
+  .tutor [hidden] { display: none !important; }
+
+  /* Launcher */
+  .tutor-launcher {
+    position: fixed; left: 20px; bottom: var(--tutor-bottom); z-index: 9999;
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 6px 18px 6px 6px; border: 0; border-radius: 999px; cursor: pointer;
+    background: var(--tutor-ink); color: #fff; font: inherit; font-size: 15px; font-weight: 700;
+    box-shadow: 0 10px 28px rgba(17, 24, 39, .28);
+    transition: transform .2s ease, box-shadow .2s ease, bottom .25s ease;
+  }
+  .tutor-launcher:hover { transform: translateY(-2px); box-shadow: 0 14px 32px rgba(17, 24, 39, .34); }
+  .tutor-launcher:focus-visible { outline: 3px solid var(--tutor-accent); outline-offset: 3px; }
+  .tutor-launcher-avatar, .tutor-avatar, .tutor-welcome-avatar, .tutor-msg-avatar {
+    display: grid; place-items: center; flex-shrink: 0; border-radius: 50%; color: #fff;
+    background: linear-gradient(135deg, var(--tutor-accent), var(--tutor-accent-dark));
+  }
+  .tutor-launcher-avatar { width: 40px; height: 40px; font-size: 17px; position: relative; }
+  .tutor-launcher-avatar::after {
+    content: ''; position: absolute; right: 0; bottom: 1px; width: 10px; height: 10px; border-radius: 50%;
+    background: #22c55e; border: 2px solid var(--tutor-ink);
+  }
+  .tutor.is-open .tutor-launcher { display: none; }
+
+  /* Teaser bubble */
+  .tutor-teaser {
+    position: fixed; left: 20px; bottom: calc(var(--tutor-bottom) + 64px); z-index: 9999;
+    width: 250px; padding: 14px 34px 14px 16px; border-radius: 16px 16px 16px 4px;
+    background: #fff; border: 1px solid var(--tutor-line); box-shadow: 0 12px 30px rgba(17, 24, 39, .14);
+    display: flex; flex-direction: column; gap: 2px; font-size: 13.5px; color: #374151; line-height: 1.45;
+    animation: tutorPop .3s ease;
+  }
+  .tutor-teaser strong { font-size: 14.5px; color: var(--tutor-ink); }
+  .tutor-teaser-close {
+    position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; border: 0; border-radius: 6px;
+    background: transparent; color: #9ca3af; cursor: pointer; font-size: 12px;
+  }
+  .tutor-teaser-close:hover { background: #f3f4f6; color: #374151; }
+
+  /* Panel */
+  .tutor-panel {
+    position: fixed; left: 20px; bottom: var(--tutor-bottom); z-index: 10000;
+    width: 390px; height: min(640px, calc(100vh - var(--tutor-bottom) - 24px));
+    display: flex; flex-direction: column; overflow: hidden;
+    background: #fff; border: 1px solid var(--tutor-line); border-radius: 20px;
+    box-shadow: 0 24px 60px rgba(17, 24, 39, .22);
+    animation: tutorPop .25s ease;
+  }
+  @keyframes tutorPop { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: none; } }
+
+  .tutor-head { display: flex; align-items: center; gap: 12px; padding: 14px 14px 14px 16px; background: var(--tutor-ink); color: #fff; }
+  .tutor-avatar { width: 40px; height: 40px; font-size: 17px; }
+  .tutor-head-text { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.25; }
+  .tutor-head-text strong { font-size: 16px; }
+  .tutor-head-text span { font-size: 12.5px; color: #cbd5e1; display: inline-flex; align-items: center; gap: 6px; }
+  .tutor-online { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; display: inline-block; }
+  .tutor-icon-btn {
+    width: 34px; height: 34px; border: 0; border-radius: 10px; cursor: pointer;
+    background: rgba(255, 255, 255, .08); color: #e5e7eb; font-size: 14px;
+    transition: background .15s ease;
+  }
+  .tutor-icon-btn:hover { background: rgba(255, 255, 255, .18); color: #fff; }
+
+  .tutor-body { flex: 1; overflow-y: auto; padding: 16px; background: #f8f9fb; scroll-behavior: smooth; }
+
+  .tutor-welcome { text-align: center; padding: 6px 4px 4px; }
+  .tutor-welcome-avatar { width: 58px; height: 58px; font-size: 24px; margin: 0 auto 10px; box-shadow: 0 8px 20px rgba(var(--brand-primary-rgb, 212,175,55), .35); }
+  .tutor-welcome h3 { margin: 0; font-size: 19px; font-weight: 800; color: var(--tutor-ink); }
+  .tutor-welcome > p { margin: 4px 0 12px; font-size: 13.5px; color: var(--tutor-muted); }
+  .tutor-skills { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; text-align: left; }
+  .tutor-skills li {
+    display: flex; align-items: flex-start; gap: 8px; padding: 9px 10px; border-radius: 10px;
+    background: #fff; border: 1px solid var(--tutor-line); font-size: 12.5px; color: #374151; line-height: 1.35;
+  }
+  .tutor-skills i { color: var(--tutor-accent-dark); margin-top: 2px; width: 14px; text-align: center; }
+  .tutor-welcome .tutor-try { margin: 16px 0 8px; font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--tutor-muted); }
+  .tutor-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+  .tutor-chip {
+    padding: 7px 12px; border-radius: 999px; border: 1px solid var(--tutor-line); background: #fff; cursor: pointer;
+    font: inherit; font-size: 12.5px; color: var(--tutor-ink); transition: border-color .15s ease, background .15s ease;
+  }
+  .tutor-chip:hover { border-color: var(--tutor-accent); background: #fffbeb; }
+
+  /* Messages */
+  .tutor-messages { display: flex; flex-direction: column; gap: 12px; }
+  .tutor-msg { display: flex; gap: 8px; max-width: 100%; }
+  .tutor-msg-avatar { width: 28px; height: 28px; font-size: 12px; margin-top: 2px; }
+  .tutor-bubble {
+    max-width: 85%; padding: 10px 13px; border-radius: 14px; font-size: 14px; line-height: 1.55;
+    overflow-wrap: anywhere; color: var(--tutor-ink);
+  }
+  .tutor-msg.is-tutor .tutor-bubble { background: #fff; border: 1px solid var(--tutor-line); border-top-left-radius: 4px; }
+  .tutor-msg.is-student { justify-content: flex-end; }
+  .tutor-msg.is-student .tutor-bubble { background: var(--tutor-ink); color: #fff; border-top-right-radius: 4px; white-space: pre-wrap; }
+  .tutor-msg.is-error .tutor-bubble { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+
+  .tutor-bubble p { margin: 0 0 8px; }
+  .tutor-bubble p:last-child, .tutor-bubble ul:last-child, .tutor-bubble ol:last-child, .tutor-bubble pre:last-child { margin-bottom: 0; }
+  .tutor-bubble ul, .tutor-bubble ol { margin: 0 0 8px; padding-left: 20px; }
+  .tutor-bubble li { margin: 2px 0; }
+  .tutor-bubble .tutor-h { display: block; margin: 4px 0 6px; font-weight: 800; }
+  .tutor-bubble code, .tutor-bubble .tutor-math {
+    padding: 1px 5px; border-radius: 5px; background: #f3f4f6; font-size: .92em;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  .tutor-bubble .tutor-math { font-family: 'Cambria Math', 'Times New Roman', serif; font-size: 1em; background: #fff7e0; }
+  .tutor-bubble pre { margin: 0 0 8px; padding: 10px 12px; border-radius: 10px; background: #0f172a; color: #e2e8f0; overflow-x: auto; font-size: 12.5px; }
+  .tutor-bubble pre code { padding: 0; background: none; color: inherit; }
+  .tutor-bubble table { border-collapse: collapse; margin: 0 0 8px; font-size: 13px; }
+  .tutor-bubble td, .tutor-bubble th { border: 1px solid var(--tutor-line); padding: 4px 8px; }
+
+  .tutor-tools { display: flex; gap: 4px; margin-top: 6px; }
+  .tutor-tool {
+    border: 0; background: transparent; color: var(--tutor-muted); cursor: pointer; font: inherit; font-size: 12px;
+    padding: 2px 6px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px;
+  }
+  .tutor-tool:hover { background: #f3f4f6; color: var(--tutor-ink); }
+
+  .tutor-typing { display: inline-flex; gap: 4px; padding: 4px 2px; }
+  .tutor-typing span { width: 7px; height: 7px; border-radius: 50%; background: #9ca3af; animation: tutorDot 1.2s infinite ease-in-out; }
+  .tutor-typing span:nth-child(2) { animation-delay: .15s; }
+  .tutor-typing span:nth-child(3) { animation-delay: .3s; }
+  @keyframes tutorDot { 0%, 80%, 100% { opacity: .3; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
+
+  /* Composer */
+  .tutor-form { display: flex; align-items: flex-end; gap: 8px; padding: 12px 12px 6px; border-top: 1px solid var(--tutor-line); background: #fff; }
+  .tutor-form textarea {
+    flex: 1; resize: none; max-height: 120px; padding: 10px 12px; border: 1px solid var(--tutor-line); border-radius: 12px;
+    font: inherit; font-size: 14px; line-height: 1.45; color: var(--tutor-ink); background: #f9fafb; outline: none;
+  }
+  .tutor-form textarea:focus { border-color: var(--tutor-accent); background: #fff; box-shadow: 0 0 0 3px rgba(var(--brand-primary-rgb, 212,175,55), .15); }
+  .tutor-send {
+    width: 42px; height: 42px; flex-shrink: 0; border: 0; border-radius: 12px; cursor: pointer;
+    background: var(--tutor-ink); color: #fff; font-size: 15px; transition: opacity .15s ease;
+  }
+  .tutor-send:disabled { opacity: .4; cursor: not-allowed; }
+  .tutor-note { margin: 0; padding: 0 12px 10px; font-size: 11px; color: #9ca3af; text-align: center; background: #fff; }
+
+  @media (max-width: 520px) {
+    .tutor-launcher { left: 16px; padding: 6px; }
+    .tutor-launcher-text { display: none; }
+    .tutor-teaser { left: 16px; width: min(250px, calc(100vw - 32px)); }
+    .tutor-panel { inset: 0; width: 100%; height: 100%; border-radius: 0; border: 0; }
+    .tutor-skills { grid-template-columns: 1fr; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .tutor-panel, .tutor-teaser { animation: none; }
+    .tutor-typing span { animation: none; opacity: .6; }
+  }
+</style>
+
+<script>
+(function () {
+  var root = document.getElementById('tutor');
+  if (!root) return;
+
+  var STORE_KEY = 'tutor-chat';
+  var TEASER_KEY = 'tutor-teaser-seen';
+  var panel = document.getElementById('tutor-panel');
+  var launcher = document.getElementById('tutor-launcher');
+  var teaser = document.getElementById('tutor-teaser');
+  var body = document.getElementById('tutor-body');
+  var list = document.getElementById('tutor-messages');
+  var welcome = document.getElementById('tutor-welcome');
+  var form = document.getElementById('tutor-form');
+  var input = document.getElementById('tutor-input');
+  var sendBtn = document.getElementById('tutor-send');
+  var history = [];
+  var busy = false;
+
+  var name = root.dataset.name;
+  if (name) document.getElementById('tutor-hello').textContent = 'Hi ' + name + ", I'm Tutor";
+
+  function store(key, value) {
+    try {
+      if (value === undefined) return sessionStorage.getItem(key);
+      sessionStorage.setItem(key, value);
+    } catch (e) { return null; }
+  }
+
+  // ---- Minimal, safe Markdown + maths rendering for replies ----
+  function escapeHtml(text) {
+    return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  var MATH = [
+    [/\\frac\{([^{}]*)\}\{([^{}]*)\}/g, '($1)/($2)'], [/\\sqrt\{([^{}]*)\}/g, '√($1)'],
+    [/\\times/g, '×'], [/\\div/g, '÷'], [/\\cdot/g, '·'], [/\\pm/g, '±'],
+    [/\\leq?/g, '≤'], [/\\geq?/g, '≥'], [/\\neq/g, '≠'], [/\\approx/g, '≈'],
+    [/\\(?:right)?arrow|\\to/g, '→'], [/\\infty/g, '∞'], [/\\degree|\^\\circ|\^\{\\circ\}/g, '°'],
+    [/\\pi/g, 'π'], [/\\theta/g, 'θ'], [/\\alpha/g, 'α'], [/\\beta/g, 'β'], [/\\gamma/g, 'γ'],
+    [/\\lambda/g, 'λ'], [/\\mu/g, 'μ'], [/\\sigma/g, 'σ'], [/\\omega/g, 'ω'], [/\\Delta/g, 'Δ'],
+    [/\\text\{([^{}]*)\}/g, '$1'], [/\\(?:left|right|,|;|!|quad)/g, ' '],
+    [/\^\{?2\}?/g, '²'], [/\^\{?3\}?/g, '³'], [/\^\{([^{}]*)\}/g, '^($1)'], [/_\{([^{}]*)\}/g, '_$1'],
+    [/[{}]/g, '']
+  ];
+  function renderMath(expr) {
+    MATH.forEach(function (rule) { expr = expr.replace(rule[0], rule[1]); });
+    return '<span class="tutor-math">' + expr.trim() + '</span>';
+  }
+
+  function inline(text) {
+    return text
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+      .replace(/\$\$([^$]+)\$\$|\\\[([\s\S]+?)\\\]|\\\(([\s\S]+?)\\\)|\$(?=\S)([^$\n]*?\S)\$(?!\d)/g, function (m, a, b, c, d) {
+        return renderMath(a || b || c || d);
+      })
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>');
+  }
+
+  function renderMarkdown(raw) {
+    var blocks = [];
+    var text = escapeHtml(raw).replace(/```[a-zA-Z0-9]*\n?([\s\S]*?)```/g, function (m, code) {
+      blocks.push('<pre><code>' + code.replace(/\n$/, '') + '</code></pre>');
+      return '\u0000' + (blocks.length - 1) + '\u0000';
+    });
+    var html = [];
+    var listType = null;
+    var para = [];
+    function flushPara() { if (para.length) { html.push('<p>' + para.join('<br>') + '</p>'); para = []; } }
+    function closeList() { if (listType) { html.push('</' + listType + '>'); listType = null; } }
+
+    text.split('\n').forEach(function (line) {
+      var trimmed = line.trim();
+      var bullet = trimmed.match(/^[-*•]\s+(.*)$/);
+      var numbered = trimmed.match(/^\d+[.)]\s+(.*)$/);
+      var heading = trimmed.match(/^#{1,6}\s+(.*)$/);
+      var block = trimmed.match(/^\u0000(\d+)\u0000$/);
+      if (bullet || numbered) {
+        flushPara();
+        var type = bullet ? 'ul' : 'ol';
+        if (listType !== type) { closeList(); html.push('<' + type + '>'); listType = type; }
+        html.push('<li>' + inline((bullet || numbered)[1]) + '</li>');
+      } else if (heading) {
+        flushPara(); closeList();
+        html.push('<span class="tutor-h">' + inline(heading[1]) + '</span>');
+      } else if (block) {
+        flushPara(); closeList();
+        html.push(blocks[+block[1]]);
+      } else if (!trimmed || /^-{3,}$/.test(trimmed)) {
+        flushPara(); closeList();
+      } else {
+        closeList();
+        para.push(inline(trimmed));
+      }
+    });
+    flushPara(); closeList();
+    return html.join('');
+  }
+
+  // ---- Messages ----
+  function scrollDown() { body.scrollTop = body.scrollHeight; }
+
+  function addMessage(role, content, opts) {
+    opts = opts || {};
+    welcome.hidden = true;
+    var row = document.createElement('div');
+    row.className = 'tutor-msg ' + (role === 'user' ? 'is-student' : 'is-tutor') + (opts.error ? ' is-error' : '');
+    if (role !== 'user') {
+      var avatar = document.createElement('span');
+      avatar.className = 'tutor-msg-avatar';
+      avatar.innerHTML = '<i class="fa-solid fa-chalkboard-user"></i>';
+      row.appendChild(avatar);
+    }
+    var wrap = document.createElement('div');
+    wrap.style.minWidth = '0';
+    var bubble = document.createElement('div');
+    bubble.className = 'tutor-bubble';
+    if (opts.typing) {
+      bubble.innerHTML = '<span class="tutor-typing" aria-label="Tutor is typing"><span></span><span></span><span></span></span>';
+    } else if (role === 'user' || opts.error) {
+      bubble.textContent = content;
+    } else {
+      bubble.innerHTML = renderMarkdown(content);
+    }
+    wrap.appendChild(bubble);
+
+    if (role === 'assistant' && !opts.typing && !opts.error) {
+      var tools = document.createElement('div');
+      tools.className = 'tutor-tools';
+      var copy = document.createElement('button');
+      copy.type = 'button';
+      copy.className = 'tutor-tool';
+      copy.innerHTML = '<i class="fa-regular fa-copy"></i> Copy';
+      copy.addEventListener('click', function () {
+        var done = function () {
+          copy.innerHTML = '<i class="fa-solid fa-check"></i> Copied';
+          setTimeout(function () { copy.innerHTML = '<i class="fa-regular fa-copy"></i> Copy'; }, 1500);
+        };
+        if (navigator.clipboard) navigator.clipboard.writeText(content).then(done, function () {});
+      });
+      tools.appendChild(copy);
+      wrap.appendChild(tools);
+    }
+    if (opts.retry) {
+      var retryTools = document.createElement('div');
+      retryTools.className = 'tutor-tools';
+      var retry = document.createElement('button');
+      retry.type = 'button';
+      retry.className = 'tutor-tool';
+      retry.innerHTML = '<i class="fa-solid fa-rotate-right"></i> Try again';
+      retry.addEventListener('click', function () { row.remove(); request(); });
+      retryTools.appendChild(retry);
+      wrap.appendChild(retryTools);
+    }
+    row.appendChild(wrap);
+    list.appendChild(row);
+    scrollDown();
+    return row;
+  }
+
+  function save() { store(STORE_KEY, JSON.stringify(history.slice(-30))); }
+
+  function setBusy(state) {
+    busy = state;
+    sendBtn.disabled = state || !input.value.trim();
+  }
+
+  function request() {
+    setBusy(true);
+    var typing = addMessage('assistant', '', { typing: true });
+    fetch(root.dataset.endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': root.dataset.csrf },
+      credentials: 'same-origin',
+      body: JSON.stringify({ messages: history })
+    })
+    .then(function (r) { return r.json().catch(function () { return { error: 'Tutor is unavailable right now.' }; }); })
+    .then(function (data) {
+      typing.remove();
+      if (data.reply) {
+        history.push({ role: 'assistant', content: data.reply });
+        save();
+        addMessage('assistant', data.reply);
+      } else {
+        addMessage('assistant', data.error || 'Something went wrong. Please try again.', { error: true, retry: true });
+      }
+    })
+    .catch(function () {
+      typing.remove();
+      addMessage('assistant', 'Could not reach Tutor. Check your connection and try again.', { error: true, retry: true });
+    })
+    .then(function () { setBusy(false); input.focus(); });
+  }
+
+  function ask(question) {
+    question = question.trim();
+    if (!question || busy) return;
+    history.push({ role: 'user', content: question });
+    save();
+    addMessage('user', question);
+    input.value = '';
+    autosize();
+    request();
+  }
+
+  // ---- Panel ----
+  function openPanel() {
+    panel.hidden = false;
+    teaser.hidden = true;
+    store(TEASER_KEY, '1');
+    root.classList.add('is-open');
+    launcher.setAttribute('aria-expanded', 'true');
+    scrollDown();
+    setTimeout(function () { input.focus(); }, 50);
+  }
+  function closePanel() {
+    panel.hidden = true;
+    root.classList.remove('is-open');
+    launcher.setAttribute('aria-expanded', 'false');
+    launcher.focus();
+  }
+
+  launcher.addEventListener('click', openPanel);
+  document.getElementById('tutor-close').addEventListener('click', closePanel);
+  document.getElementById('tutor-reset').addEventListener('click', function () {
+    if (busy) return;
+    history = [];
+    save();
+    list.innerHTML = '';
+    welcome.hidden = false;
+    input.focus();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && !panel.hidden) closePanel();
+  });
+
+  root.querySelectorAll('.tutor-chip').forEach(function (chip) {
+    chip.addEventListener('click', function () { ask(chip.textContent); });
+  });
+
+  function autosize() {
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+    sendBtn.disabled = busy || !input.value.trim();
+  }
+  input.addEventListener('input', autosize);
+  input.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(input.value); }
+  });
+  form.addEventListener('submit', function (e) { e.preventDefault(); ask(input.value); });
+  sendBtn.disabled = true;
+
+  // Restore this tab's conversation.
+  try { history = JSON.parse(store(STORE_KEY) || '[]') || []; } catch (e) { history = []; }
+  history.forEach(function (m) { addMessage(m.role, m.content); });
+
+  // Greeting bubble, once per browser session.
+  if (!store(TEASER_KEY)) {
+    setTimeout(function () { if (panel.hidden) teaser.hidden = false; }, 3500);
+  }
+  teaser.querySelector('.tutor-teaser-close').addEventListener('click', function () {
+    teaser.hidden = true;
+    store(TEASER_KEY, '1');
+  });
+  teaser.addEventListener('click', function (e) {
+    if (!e.target.closest('.tutor-teaser-close')) openPanel();
+  });
+})();
+</script>
