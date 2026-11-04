@@ -2,6 +2,8 @@
 {% load static %}
 {% load navbar_tags %}
 
+{% block title %}Login | Indore Tutorials{% endblock %}
+{% block seo_meta %}{% include "partials/seo_meta.html" with seo_title="Login" seo_noindex=True %}{% endblock %}
 {% block content %}
 {% include 'message.html' %}
 {% get_auth_page_settings as auth_settings %}

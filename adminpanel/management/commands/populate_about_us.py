@@ -9,20 +9,20 @@ class Command(BaseCommand):
         # Create default About Us section
         about_us, created = AboutUsSection.objects.get_or_create(
             defaults={
-                'company_name': 'Indore Tutorial',
-                'heading': 'About Indore Tutorial',
+                'company_name': 'Indore Tutorials',
+                'heading': 'About Indore Tutorials',
                 'description': '''India's fastest-growing one-stop exam prep platform (Trusted by over 4 crore users!).
 We empower exam aspirants with affordable online live classes, mock tests, e-books, and personalized learning journeys across 1,600+ national and state exams. Maximize your success with best-in-class technology, analytics, and top educators!''',
-                'address': '6th Floor, Intech Capital, Vibhuti Khand, Gomti Nagar, Lucknow - 226010, India',
+                'address': '8th Floor, DLF Cyber City, Tower A, Phase III, Gurugram - 122002, India',
                 'email': 'indoretutorial1857@gmail.com',
                 'phone': '7489699909',
                 'phone_hours': '(10 AM to 7 PM)',
-                'facebook_url': 'https://facebook.com/edugorilla',
-                'twitter_url': 'https://twitter.com/edugorilla',
-                'linkedin_url': 'https://linkedin.com/company/edugorilla',
-                'instagram_url': 'https://instagram.com/edugorilla',
-                'telegram_url': 'https://t.me/edugorilla',
-                'map_embed_url': 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3559.179356267426!2d81.01998567588361!3d26.868361676681647!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x399be3b383c2f1d7%3A0x45a6a4568b63d9ed!2sIntech%20Capital%2C%20Vibhuti%20Khand%2C%20Gomti%20Nagar%2C%20Lucknow%2C%20Uttar%20Pradesh%20226010!5e0!3m2!1sen!2sin!4v1711914801650!5m2!1sen!2sin',
+                'facebook_url': '',
+                'twitter_url': '',
+                'linkedin_url': '',
+                'instagram_url': '',
+                'telegram_url': '',
+                'map_embed_url': 'https://www.google.com/maps?q=DLF+Cyber+City+Tower+A+Phase+III+Gurugram+Haryana+122002&output=embed',
             }
         )
         

@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 {% load static %}
 {% load navbar_tags %}
+{% block title %}Sign Up | Indore Tutorials{% endblock %}
+{% block seo_meta %}{% include "partials/seo_meta.html" with seo_title="Sign Up" seo_noindex=True %}{% endblock %}
 {% block content %}
 {% include 'message.html' %}
 {% get_auth_page_settings as auth_settings %}

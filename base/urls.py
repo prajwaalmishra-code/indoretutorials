@@ -1,6 +1,10 @@
 # base/urls.py - Add these URL patterns
 from django.urls import path, include
 from base import views
+from base.sitemaps import sitemaps
+
+from django.contrib.sitemaps.views import sitemap
+from django.views.decorators.cache import cache_page
 
 from django.views.generic import TemplateView
 from django.conf import settings
@@ -75,6 +79,8 @@ path('notifications/clear-all/', views.clear_all_notifications, name='clear_all_
 
    # PWA URLs
     path('manifest.json', views.manifest, name='manifest1'),
+    path('robots.txt', views.robots_txt, name='robots_txt'),
+    path('sitemap.xml', cache_page(60 * 60)(sitemap), {'sitemaps': sitemaps}, name='django.contrib.sitemaps.views.sitemap'),
     path('offline/', views.offline, name='offline'),
     path('page/<slug:slug>/', views.extra_page_detail, name='extra_page_detail'),
     path('serviceworker.js', views.service_worker, name='service-worker'),

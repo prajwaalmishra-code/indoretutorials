@@ -79,7 +79,7 @@ class DropboxConfigurationForm(forms.ModelForm):
             "app_key": forms.TextInput(attrs={"class": "backup-input", "autocomplete": "off"}),
             "app_secret": forms.PasswordInput(attrs={"class": "backup-input", "autocomplete": "new-password"}, render_value=False),
             "refresh_token": forms.PasswordInput(attrs={"class": "backup-input", "autocomplete": "new-password"}, render_value=False),
-            "backup_folder": forms.TextInput(attrs={"class": "backup-input", "placeholder": "/edutrellis-educational-backup"}),
+            "backup_folder": forms.TextInput(attrs={"class": "backup-input", "placeholder": "/indore-tutorials-backup"}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -93,7 +93,7 @@ class DropboxConfigurationForm(forms.ModelForm):
         folder = self.cleaned_data["backup_folder"].strip()
         if not folder.startswith("/"):
             folder = f"/{folder}"
-        return folder.rstrip("/") or "/edutrellis-educational-backup"
+        return folder.rstrip("/") or "/indore-tutorials-backup"
 
     def clean_app_secret(self):
         value = self.cleaned_data.get("app_secret", "").strip()

@@ -428,28 +428,28 @@ class CTASection(models.Model):
 
 
 class AboutUsSection(models.Model):
-    company_name = models.CharField(max_length=200, default="Indore Tutorial")
-    heading = models.CharField(max_length=200, default="About Indore Tutorial")
+    company_name = models.CharField(max_length=200, default="Indore Tutorials")
+    heading = models.CharField(max_length=200, default="About Indore Tutorials")
     description = models.TextField(default="India's fastest-growing one-stop exam prep platform")
     logo = models.ImageField(upload_to='about/', blank=True, help_text="Company logo image")
 
     # Contact Information
-    address = models.TextField(default="6th Floor, Intech Capital, Vibhuti Khand, Gomti Nagar, Lucknow - 226010, India")
+    address = models.TextField(default="8th Floor, DLF Cyber City, Tower A, Phase III, Gurugram - 122002, India")
     email = models.EmailField(default="indoretutorial1857@gmail.com")
     phone = models.CharField(max_length=50, default="7489699909")
     phone_hours = models.CharField(max_length=100, default="(10 AM to 7 PM)")
 
     # Social Media Links
-    facebook_url = models.URLField(blank=True, default="https://facebook.com/edugorilla")
-    twitter_url = models.URLField(blank=True, default="https://twitter.com/edugorilla")
-    linkedin_url = models.URLField(blank=True, default="https://linkedin.com/company/edugorilla")
-    instagram_url = models.URLField(blank=True, default="https://instagram.com/edugorilla")
-    telegram_url = models.URLField(blank=True, default="https://t.me/edugorilla")
+    facebook_url = models.URLField(blank=True, default="")
+    twitter_url = models.URLField(blank=True, default="")
+    linkedin_url = models.URLField(blank=True, default="")
+    instagram_url = models.URLField(blank=True, default="")
+    telegram_url = models.URLField(blank=True, default="")
 
     # Map
     map_embed_url = models.TextField(
         blank=True,
-        default="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3559.179356267426!2d81.01998567588361!3d26.868361676681647!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x399be3b383c2f1d7%3A0x45a6a4568b63d9ed!2sIntech%20Capital%2C%20Vibhuti%20Khand%2C%20Gomti%20Nagar%2C%20Lucknow%2C%20Uttar%20Pradesh%20226010!5e0!3m2!1sen!2sin!4v1711914801650!5m2!1sen!2sin",
+        default="https://www.google.com/maps?q=DLF+Cyber+City+Tower+A+Phase+III+Gurugram+Haryana+122002&output=embed",
         help_text="Google Maps embed URL"
     )
 
@@ -672,17 +672,17 @@ class NavbarSettings(models.Model):
 class FooterSettings(models.Model):
     logo = models.ImageField(upload_to='footer/', blank=True, null=True, help_text="Footer logo image")
     email = models.EmailField(default="indoretutorial1857@gmail.com", help_text="Contact email")
-    copyright_text = models.CharField(max_length=200, default="Copyright © 2026 Indore Tutorial. All rights reserved.")
+    copyright_text = models.CharField(max_length=200, default="Copyright © 2026 Indore Tutorials. All rights reserved.")
 
     google_play_url = models.URLField(blank=True, default="https://play.google.com/store/apps", help_text="Google Play Store URL")
     app_store_url = models.URLField(blank=True, default="https://apps.apple.com/app", help_text="Apple App Store URL")
 
-    facebook_url = models.URLField(blank=True, default="https://facebook.com/edugorilla")
-    twitter_url = models.URLField(blank=True, default="https://twitter.com/edugorilla")
-    youtube_url = models.URLField(blank=True, default="https://youtube.com/edugorilla")
-    linkedin_url = models.URLField(blank=True, default="https://linkedin.com/company/edugorilla")
-    instagram_url = models.URLField(blank=True, default="https://instagram.com/edugorilla")
-    telegram_url = models.URLField(blank=True, default="https://t.me/edugorilla")
+    facebook_url = models.URLField(blank=True, default="")
+    twitter_url = models.URLField(blank=True, default="")
+    youtube_url = models.URLField(blank=True, default="")
+    linkedin_url = models.URLField(blank=True, default="")
+    instagram_url = models.URLField(blank=True, default="")
+    telegram_url = models.URLField(blank=True, default="")
 
     is_active = models.BooleanField(default=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -909,7 +909,7 @@ class DropboxConfiguration(models.Model):
     app_key = models.CharField(max_length=100)
     app_secret = models.CharField(max_length=200)
     refresh_token = models.CharField(max_length=500)
-    backup_folder = models.CharField(max_length=255, default="/edutrellis-educational-backup")
+    backup_folder = models.CharField(max_length=255, default="/indore-tutorials-backup")
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

@@ -1,10 +1,13 @@
 {% load static %}
+{% load seo_tags %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ bundle.title }} - Product Bundle</title>
+    <title>{{ bundle.title }} | Course Bundle | Indore Tutorials</title>
+    {% include "partials/seo_meta.html" with seo_title=bundle.title seo_description=bundle.short_description|default:bundle.description seo_image=bundle.thumbnail %}
+    {% course_jsonld bundle.title bundle.description bundle.thumbnail bundle.bundle_price bundle.currency bundle.is_free %}
     
     <!-- Font Awesome -->
     <link rel="stylesheet" href="{% static 'css/fontawesome/all.min.css' %}">

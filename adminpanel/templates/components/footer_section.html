@@ -5,17 +5,25 @@
         <div class="footer-logo-col">
             <div class="footer-logo-row">
                 {% if footer_settings.logo %}
-                    <img src="{{ footer_settings.logo.url }}" alt="Footer Logo" class="footer-logo-img">
+                    <img src="{{ footer_settings.logo.url }}" alt="Indore Tutorials logo" class="footer-logo-img">
                 {% else %}
                     {% load static %}
-                    <img src="{% static 'img/footerlogo.png' %}" alt="Logo" class="footer-logo-img">
+                    <img src="{% static 'img/footerlogo.png' %}" alt="Indore Tutorials logo" class="footer-logo-img">
                 {% endif %}
             </div>
-            
-            <div class="footer-mail-row">
+
+            <div class="footer-mail-row footer-contact-row">
                 <span class="footer-mail-label">Mail:</span>
                 <a href="mailto:{{ footer_settings.email }}" class="footer-mail">{{ footer_settings.email }}</a>
             </div>
+            <div class="footer-mail-row footer-contact-row">
+                <span class="footer-mail-label">Call:</span>
+                <a href="tel:+91{{ site_contact.phone }}" class="footer-mail">{{ site_contact.phone_display }}</a>
+            </div>
+            <address class="footer-mail-row footer-address">
+                <span class="footer-mail-label">Address:</span>
+                <a href="{{ site_contact.maps_url }}" class="footer-mail" target="_blank" rel="noopener noreferrer">{{ site_contact.address }}</a>
+            </address>
             
             <!-- PWA Install Button (replaces app store badges) -->
             <div class="footer-install-container">
@@ -143,6 +151,16 @@
 
 .footer-mail-row {
     margin-bottom: 16px;
+}
+
+.footer-contact-row {
+    margin-bottom: 8px;
+}
+
+.footer-address {
+    font-style: normal;
+    line-height: 1.5;
+    max-width: 320px;
 }
 
 .footer-mail-label {
@@ -551,7 +569,7 @@
       
       // Show success message
       setTimeout(function() {
-        alert('🎉 App installed successfully! You can now access Indore Tutorial from your home screen.');
+        alert('🎉 App installed successfully! You can now access Indore Tutorials from your home screen.');
       }, 500);
     });
     

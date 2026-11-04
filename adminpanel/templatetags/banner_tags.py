@@ -55,4 +55,5 @@ def render_footer_section(context):
         'footer_links': footer_links,
         'footer_legal_links': footer_legal_links,
         'footer_sections': footer_sections,
+        'site_contact': context.get('site_contact', {}),
     }

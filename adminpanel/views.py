@@ -1357,8 +1357,8 @@ def about_us_section_edit(request):
     """Edit About Us main section"""
     about_us, _ = AboutUsSection.objects.get_or_create(
         defaults={
-            'company_name': 'Indore Tutorial',
-            'heading': 'About Indore Tutorial',
+            'company_name': 'Indore Tutorials',
+            'heading': 'About Indore Tutorials',
             'description': (
                 "India's fastest-growing one-stop exam prep platform (Trusted by over 4 crore users!).\n"
                 'We empower exam aspirants with affordable online live classes, mock tests, e-books, and personalized '
@@ -1546,7 +1546,7 @@ def footer_edit(request):
 @login_required
 def footer_settings_edit(request):
     footer_settings, _ = FooterSettings.objects.get_or_create(
-        defaults={'email': 'indoretutorial1857@gmail.com', 'copyright_text': 'Copyright © 2026 Indore Tutorial. All rights reserved.'}
+        defaults={'email': 'indoretutorial1857@gmail.com', 'copyright_text': 'Copyright © 2026 Indore Tutorials. All rights reserved.'}
     )
     if request.method == 'POST':
         form = FooterSettingsForm(request.POST, request.FILES, instance=footer_settings)

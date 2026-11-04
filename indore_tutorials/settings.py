@@ -1,5 +1,5 @@
 """
-Django settings for eduTrellis project (Django 5.2+ ready).
+Django settings for the Indore Tutorials project (Django 5.2+ ready).
 Optimized for performance, caching, security, and Core Web Vitals.
 """
 
@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.sitemaps",
 
     # Local apps
     "base",
@@ -86,7 +87,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = "eduTrellis.urls"
+ROOT_URLCONF = "indore_tutorials.urls"
 
 # --------------------
 # TEMPLATES
@@ -107,6 +108,7 @@ TEMPLATES = [
                 "adminpanel.context_processors.navbar_settings",
                 "adminpanel.context_processors.footer_settings",
                 "adminpanel.context_processors.site_contact",
+                "adminpanel.context_processors.seo",
                 "video_courses.context_processors.categories_context",
             ],
             "loaders": [
@@ -122,7 +124,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = "eduTrellis.wsgi.application"
+WSGI_APPLICATION = "indore_tutorials.wsgi.application"
 
 # --------------------
 # DATABASE
@@ -156,7 +158,7 @@ else:
     CACHES = {
         "default": {
             "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-            "LOCATION": "edutrellis-cache",
+            "LOCATION": "indore-tutorials-cache",
             "TIMEOUT": 300,
             "OPTIONS": {"MAX_ENTRIES": 1000},
         }
@@ -261,10 +263,16 @@ CSRF_COOKIE_HTTPONLY = False
 CSRF_USE_SESSIONS = False
 
 # --------------------
+# SEO
+# Canonical public origin used for canonical links, Open Graph URLs and the sitemap.
+# --------------------
+SITE_URL = os.environ.get("SITE_URL", "https://www.indoretutorials.online").rstrip("/")
+
+# --------------------
 # PWA SETTINGS
 # --------------------
-PWA_APP_NAME = 'Indore Tutorial'
-PWA_APP_DESCRIPTION = 'Premium online education platform'
+PWA_APP_NAME = 'Indore Tutorials'
+PWA_APP_DESCRIPTION = 'Online live classes, video courses, test series and e-library by Indore Tutorials'
 PWA_APP_THEME_COLOR = '#c7212f'
 PWA_APP_BACKGROUND_COLOR = '#ffffff'
 PWA_APP_DISPLAY = 'standalone'

@@ -1,7 +1,8 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}My Purchases - {{ block.super }}{% endblock %}
+{% block title %}My Purchases | Indore Tutorials{% endblock %}
+{% block seo_meta %}{% include "partials/seo_meta.html" with seo_title="My Purchases" seo_noindex=True %}{% endblock %}
 
 {% block content %}
 <style>

@@ -1,10 +1,13 @@
 {% load static %}
+{% load seo_tags %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ course.name }} - Video Course Detail</title>
+    <title>{{ course.name }} | Online Video Course | Indore Tutorials</title>
+    {% include "partials/seo_meta.html" with seo_title=course.name seo_description=course.description seo_image=course.thumbnail %}
+    {% course_jsonld course.name course.description course.thumbnail course.selling_price course.currency course.is_free %}
     
     <!-- Video.js CSS -->
     <link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet">
@@ -1157,7 +1160,7 @@
             key: data.razorpay_merchant_key,
             amount: data.amount,
             currency: data.currency,
-            name: "Indore Tutorial Platform",
+            name: "Indore Tutorials Platform",
             description: data.course_name,
             order_id: data.razorpay_order_id,
             prefill: {

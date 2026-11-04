@@ -1,4 +1,4 @@
-// PWA Installation Handler for EduTrellis
+// PWA Installation Handler for Indore Tutorials
 (function() {
   'use strict';
 
@@ -121,7 +121,7 @@
     }
     
     setTimeout(() => {
-      alert('🎉 App installed successfully! You can now access EduTrellis from your home screen.');
+      alert('🎉 App installed successfully! You can now access Indore Tutorials from your home screen.');
     }, 500);
   });
 

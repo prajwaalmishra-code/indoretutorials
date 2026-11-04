@@ -1,7 +1,8 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}{{ category.name }} - All Courses{% endblock %}
+{% block title %}{{ category.name }} Courses, Test Series & E-Books | Indore Tutorials{% endblock %}
+{% block seo_meta %}{% include "partials/seo_meta.html" with seo_title=category.name seo_description=category.description %}{% endblock %}
 
 {% block content %}
 <style>

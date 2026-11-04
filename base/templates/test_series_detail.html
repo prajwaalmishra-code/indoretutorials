@@ -1,4 +1,5 @@
 {% load static %}
+{% load seo_tags %}
 {% load navbar_tags %}
 {% get_theme_settings as theme %}
 <!DOCTYPE html>
@@ -6,7 +7,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ test_series.title }} - Test Series</title>
+    <title>{{ test_series.title }} | Online Test Series | Indore Tutorials</title>
+    {% include "partials/seo_meta.html" with seo_title=test_series.title seo_description=test_series.description seo_image=test_series.thumbnail %}
+    {% course_jsonld test_series.title test_series.description test_series.thumbnail test_series.price "INR" test_series.is_free %}
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
     <link rel="stylesheet" href="{% static 'css/fontawesome/all.min.css' %}">
     <link rel="stylesheet" href="{% static 'css/typography.css' %}">

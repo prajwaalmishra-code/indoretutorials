@@ -1,6 +1,6 @@
 """
 adminpanel/backup_utils.py
-Dropbox backup manager for EduTrellis database backups.
+Dropbox backup manager for Indore Tutorials database backups.
 Uses the Dropbox OAuth2 credentials already configured in settings.
 """
 from __future__ import annotations
@@ -28,7 +28,7 @@ def _credentials():
         settings.DROPBOX_APP_KEY,
         settings.DROPBOX_APP_SECRET,
         settings.DROPBOX_REFRESH_TOKEN,
-        "/edutrellis-educational-backup",
+        "/indore-tutorials-backup",
     )
 
 
@@ -91,7 +91,7 @@ class DropboxBackupManager:
             return {"success": False, "message": f"Database file not found: {DB_PATH}"}
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"edutrellis_backup_{timestamp}.sqlite3"
+        filename = f"indore_tutorials_backup_{timestamp}.sqlite3"
         _, _, _, backup_folder = _credentials()
         dropbox_path = f"{backup_folder}/{filename}"
 

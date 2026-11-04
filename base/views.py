@@ -125,9 +125,9 @@ def manifest(request):
     theme_color = ThemeSettings.get_solo().primary_color
 
     manifest_data = {
-        "name": "Indore Tutorial - Complete Learning Platform",
-        "short_name": "Indore Tutorial",
-        "description": "Access live classes, video courses, test series, and e-library. Learn anytime, anywhere with Indore Tutorial.",
+        "name": "Indore Tutorials - Complete Learning Platform",
+        "short_name": "Indore Tutorials",
+        "description": "Prepare smarter with Indore Tutorials: live online classes, video courses, mock test series, previous year papers and e-books.",
         "start_url": "/",
         "scope": "/",
         "display": "standalone",
@@ -219,6 +219,23 @@ def manifest(request):
     }
     
     return JsonResponse(manifest_data, json_dumps_params={'indent': 2})
+
+ROBOTS_DISALLOW = [
+    '/admin/', '/api/', '/payment/', '/exam/', '/pdf/', '/dropbox-file/',
+    '/my_purchases/', '/my_results/', '/my-library/', '/my-coupons/', '/profile/',
+    '/notifications/', '/search/', '/login', '/signup_user', '/verify-otp/',
+    '/resend-otp/', '/forgot-password/', '/verify-reset-otp/', '/reset-password/',
+    '/offline/',
+]
+
+@require_GET
+@cache_control(max_age=86400)
+def robots_txt(request):
+    """robots.txt pointing crawlers at the sitemap and away from private pages."""
+    lines = ['User-agent: *', 'Allow: /']
+    lines += [f'Disallow: {path}' for path in ROBOTS_DISALLOW]
+    lines += ['', f'Sitemap: {settings.SITE_URL}/sitemap.xml', '']
+    return HttpResponse('\n'.join(lines), content_type='text/plain')
 
 @require_GET
 def offline(request):
@@ -3687,7 +3704,7 @@ def payment_handler(request):
 # ===== TUTOR (AI TEACHER CHAT) =====
 
 TUTOR_PERSONA = (
-    "[Context for this reply: You are Tutor, the AI teacher on the Indore Tutorial learning platform "
+    "[Context for this reply: You are Tutor, the AI teacher on the Indore Tutorials learning platform "
     "for Indian students (CBSE, ICSE and state boards, and exams such as JEE, NEET, SSC, banking and UPSC). "
     "Your name is Tutor. Teach patiently: explain step by step in simple language with examples, and keep "
     "replies short unless the student asks for detail. If the student writes in Hindi or Hinglish, reply the "

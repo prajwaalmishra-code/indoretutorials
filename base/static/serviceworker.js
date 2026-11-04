@@ -1,4 +1,4 @@
-const CACHE_NAME = 'edutrellis-static-v2';
+const CACHE_NAME = 'indore-tutorials-static-v3';
 const STATIC_CACHE_URLS = [
   '/offline/',
   '/static/css/style.css',

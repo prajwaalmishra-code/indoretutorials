@@ -43,7 +43,7 @@ def backup_dashboard(request):
         app_key=settings.DROPBOX_APP_KEY,
         app_secret=settings.DROPBOX_APP_SECRET,
         refresh_token=settings.DROPBOX_REFRESH_TOKEN,
-        backup_folder="/edutrellis-educational-backup",
+        backup_folder="/indore-tutorials-backup",
     )
     form = DropboxConfigurationForm(instance=saved_config)
     context = {

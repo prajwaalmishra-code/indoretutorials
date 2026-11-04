@@ -522,6 +522,6 @@ class ProductBundleAdmin(admin.ModelAdmin):
 # ============================================
 # ADMIN SITE CUSTOMIZATION
 # ============================================
-admin.site.site_header = "EduGorilla Admin Panel"
-admin.site.site_title = "EduGorilla Admin"
-admin.site.index_title = "Welcome to EduGorilla Administration"
+admin.site.site_header = "Indore Tutorials Admin Panel"
+admin.site.site_title = "Indore Tutorials Admin"
+admin.site.index_title = "Welcome to Indore Tutorials Administration"

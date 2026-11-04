@@ -1,7 +1,9 @@
 # adminpanel/context_processors.py
 from .models import NavbarSettings, FooterSettings, FooterLink, FooterLegalLink
 from video_courses.models import Category
+from django.conf import settings
 from django.core.cache import cache
+from django.templatetags.static import static
 
 # ── Site-wide contact constants ──────────────────────────────────────────────
 SITE_EMAIL = "indoretutorial1857@gmail.com"
@@ -10,10 +12,33 @@ SITE_PHONE_DISPLAY = "+91 74896 99909"
 SITE_WHATSAPP_NUMBER = "917489699909"  # country code + number, no +
 SITE_WHATSAPP_URL = (
     f"https://wa.me/{SITE_WHATSAPP_NUMBER}"
-    "?text=Hello%2C%20I%20would%20like%20to%20know%20more%20about%20Indore%20Tutorial%20courses"
+    "?text=Hello%2C%20I%20would%20like%20to%20know%20more%20about%20Indore%20Tutorials%20courses"
 )
-SITE_ADDRESS = "P-109, Prembagh, Shahpur, Chinhat, Lucknow, Uttar Pradesh 226028"
-SITE_MAPS_URL = "https://maps.google.com/?q=P-109,+Prembagh,+Shahpur,+Chinhat,+Lucknow,+Uttar+Pradesh+226028"
+SITE_ADDRESS = "8th Floor, DLF Cyber City, Tower A, Phase III, Gurugram - 122002, India"
+SITE_MAPS_URL = "https://maps.google.com/?q=DLF+Cyber+City+Tower+A+Phase+III+Gurugram+Haryana+122002"
+# Same address split into schema.org PostalAddress parts for structured data.
+SITE_POSTAL_ADDRESS = {
+    "streetAddress": "8th Floor, DLF Cyber City, Tower A, Phase III",
+    "addressLocality": "Gurugram",
+    "addressRegion": "Haryana",
+    "postalCode": "122002",
+    "addressCountry": "IN",
+}
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── SEO defaults ─────────────────────────────────────────────────────────────
+SITE_NAME = "Indore Tutorials"
+SEO_DEFAULT_TITLE = "Indore Tutorials | Online Live Classes, Video Courses & Test Series"
+SEO_DEFAULT_DESCRIPTION = (
+    "Prepare smarter with Indore Tutorials: live online classes, video courses, mock test series, "
+    "previous year papers and e-books for board and competitive exams."
+)
+SEO_KEYWORDS = (
+    "Indore Tutorials, online coaching, live online classes, video courses, online test series, "
+    "mock tests, previous year papers, e-library, e-books, CBSE, board exam preparation, "
+    "competitive exam preparation"
+)
+SEO_DEFAULT_IMAGE = "img/brand/logo-horizontal.png"
 # ─────────────────────────────────────────────────────────────────────────────
 
 
@@ -35,6 +60,27 @@ def site_contact(request):
             "whatsapp_url": SITE_WHATSAPP_URL,
             "address": SITE_ADDRESS,
             "maps_url": SITE_MAPS_URL,
+        }
+    }
+
+
+def seo(request):
+    """
+    Injects SEO defaults into every template context.
+    Canonical URLs always point at settings.SITE_URL so www/non-www and
+    alternate domains consolidate onto one indexed origin.
+        {{ seo.title }}  {{ seo.description }}  {{ seo.canonical_url }}  {{ seo.image }}
+    """
+    site_url = settings.SITE_URL
+    return {
+        "seo": {
+            "site_name": SITE_NAME,
+            "site_url": site_url,
+            "title": SEO_DEFAULT_TITLE,
+            "description": SEO_DEFAULT_DESCRIPTION,
+            "keywords": SEO_KEYWORDS,
+            "canonical_url": f"{site_url}{request.path}",
+            "image": f"{site_url}{static(SEO_DEFAULT_IMAGE)}",
         }
     }
 
@@ -72,7 +118,7 @@ def footer_settings(request):
         if not settings:
             settings = FooterSettings.objects.create(
                 email=SITE_EMAIL,
-                copyright_text="Copyright \u00a9 2026 Indore Tutorial. All rights reserved.",
+                copyright_text="Copyright \u00a9 2026 Indore Tutorials. All rights reserved.",
             )
 
         cache.set(
