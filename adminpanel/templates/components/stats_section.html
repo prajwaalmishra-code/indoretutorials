@@ -7,7 +7,7 @@
                     {% if stat.icon_type == 'font_awesome' and stat.icon %}
                         <i class="fas fa-{{ stat.icon }}" style="color: {{ stat.icon_color }};"></i>
                     {% elif stat.icon_type == 'image' and stat.icon_image %}
-                        <img src="{{ stat.icon_image.url }}" alt="{{ stat.label }}" class="custom-icon">
+                        <img loading="lazy" decoding="async" src="{{ stat.icon_image.url }}" alt="{{ stat.label }}" class="custom-icon">
                     {% else %}
                         <i class="fas fa-question-circle" style="color: #6c757d;"></i>
                     {% endif %}

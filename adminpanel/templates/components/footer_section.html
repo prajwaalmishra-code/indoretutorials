@@ -5,10 +5,10 @@
         <div class="footer-logo-col">
             <div class="footer-logo-row">
                 {% if footer_settings.logo %}
-                    <img src="{{ footer_settings.logo.url }}" alt="Indore Tutorials logo" class="footer-logo-img">
+                    <img loading="lazy" decoding="async" src="{{ footer_settings.logo.url }}" alt="Indore Tutorials logo" class="footer-logo-img">
                 {% else %}
                     {% load static %}
-                    <img src="{% static 'img/footerlogo.png' %}" alt="Indore Tutorials logo" class="footer-logo-img">
+                    <img loading="lazy" decoding="async" src="{% static 'img/footerlogo.png' %}" alt="Indore Tutorials logo" class="footer-logo-img">
                 {% endif %}
             </div>
 

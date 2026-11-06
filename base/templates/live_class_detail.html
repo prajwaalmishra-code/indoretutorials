@@ -317,7 +317,7 @@
 <section class="course-header">
     <div class="container">
         <div class="thumb">
-            <img src="{% if course.banner_image_desktop %}{{ course.banner_image_desktop.url }}{% else %}{% static 'img/default-thumb.jpg' %}{% endif %}" alt="{{ course.name }}">
+            <img loading="lazy" decoding="async" src="{% if course.banner_image_desktop %}{{ course.banner_image_desktop.url }}{% else %}{% static 'img/default-thumb.jpg' %}{% endif %}" alt="{{ course.name }}">
         </div>
         <div class="details">
             <h1>{{ course.name }}</h1>

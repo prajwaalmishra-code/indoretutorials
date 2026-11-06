@@ -22,12 +22,20 @@ if load_dotenv:
     load_dotenv(BASE_DIR / ".env")
 
 # SECURITY
+_DEV_SECRET_KEY = "local-development-key-4fY9uL2qN7vR8xW3sA6dH1jK5mP0tC9bE2gZ7nQ4"
 SECRET_KEY = os.environ.get(
     "DJANGO_SECRET_KEY",
-    "local-development-key-4fY9uL2qN7vR8xW3sA6dH1jK5mP0tC9bE2gZ7nQ4",
+    _DEV_SECRET_KEY,
 )
 
-DEBUG = True
+# Off unless explicitly enabled: production must never run with DEBUG (it disables every
+# HTTPS/cookie protection below and shows settings on error pages). Set DJANGO_DEBUG=True in .env locally.
+DEBUG = os.environ.get("DJANGO_DEBUG", "False").strip().lower() in ("1", "true", "yes")
+
+if not DEBUG and SECRET_KEY == _DEV_SECRET_KEY:
+    import warnings
+    warnings.warn("DJANGO_SECRET_KEY is not set: production is using the public development key. Set it now.")
+
 
 ALLOWED_HOSTS = [
     host.strip()
@@ -83,6 +91,7 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "adminpanel.middleware.ManagementAccessMiddleware",
+    "adminpanel.middleware.SecurityHeadersAndAuditMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -231,7 +240,20 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 X_FRAME_OPTIONS = "DENY"
 
+# Session & cookie hardening
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_AGE = 60 * 60 * 24 * 14  # two weeks unless "remember me" changes it
+SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin-allow-popups"  # Razorpay checkout opens a popup
+PERMISSIONS_POLICY = "camera=(self), microphone=(self), geolocation=(), payment=(self)"
+
+# Behind Railway / PythonAnywhere the client IP arrives in X-Forwarded-For.
+TRUST_X_FORWARDED_FOR = os.environ.get("TRUST_X_FORWARDED_FOR", "True").strip().lower() in ("1", "true", "yes")
+
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10 MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024  # larger uploads stream to a temp file
+FILE_UPLOAD_PERMISSIONS = 0o644
 
 # --------------------
 # LOGIN / LOGOUT
@@ -311,9 +333,10 @@ for origin in (
 # --------------------
 # DROPBOX STORAGE
 # --------------------
-DROPBOX_APP_KEY = "wgg2fsw5pf16x8q"
-DROPBOX_APP_SECRET = "38dg9gi6djz3zuu"
-DROPBOX_REFRESH_TOKEN = "Si57f7yXuB0AAAAAAAAAAZGrsYbd1YLQpvGHxlJES4DRvKr7mDfZo8xqLaJBTY_s"
+# Secrets come from the environment (.env locally, the host's variables in production).
+DROPBOX_APP_KEY = os.environ.get("DROPBOX_APP_KEY", "")
+DROPBOX_APP_SECRET = os.environ.get("DROPBOX_APP_SECRET", "")
+DROPBOX_REFRESH_TOKEN = os.environ.get("DROPBOX_REFRESH_TOKEN", "")
 
 # --------------------
 # LOGGING

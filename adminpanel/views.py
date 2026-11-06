@@ -17,6 +17,7 @@ from django.db.models import Q, Sum, Count
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.utils.html import format_html
 from django.utils.text import slugify
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST , require_http_methods
@@ -629,17 +630,27 @@ def payment_dashboard(request):
 def staff_required(view):
     return user_passes_test(lambda u: u.is_active and u.is_staff)(view)
 
+
+def _can_manage_user(actor, target):
+    """Superusers manage everyone; other staff manage only regular (non-staff) accounts."""
+    return actor.is_superuser or not (target.is_staff or target.is_superuser)
+
+
+def _deny_user_management(request):
+    messages.error(request, 'Only a superuser can change staff or superuser accounts.')
+    return redirect('signupdashboard')
+
 @staff_required
 def add_user(request):
     if request.method == 'POST':
-        form = AdminCreateUserForm(request.POST, request.FILES)
+        form = AdminCreateUserForm(request.POST, request.FILES, actor=request.user)
         if form.is_valid():
             form.save()
             messages.success(request, 'User created successfully.')
             return redirect('signupdashboard')
         messages.error(request, 'Please correct the errors below.')
     else:
-        form = AdminCreateUserForm()
+        form = AdminCreateUserForm(actor=request.user)
     return render(request, 'users_add.html', {'form': form})
 
 
@@ -649,13 +660,20 @@ def add_user(request):
 def edit_user(request, user_id):
     """Edit user view - Maintains user status and removes permission editing"""
     user_obj = get_object_or_404(User, id=user_id)
+    if not _can_manage_user(request.user, user_obj):
+        return _deny_user_management(request)
     original_is_active = user_obj.is_active
     original_is_staff = user_obj.is_staff
     original_is_superuser = user_obj.is_superuser
 
     if request.method == 'POST':
         try:
-            user_obj.email = request.POST.get('email', user_obj.email)
+            new_email = request.POST.get('email', user_obj.email).strip().lower()[:254]
+            from django.core.validators import validate_email
+            validate_email(new_email)
+            if User.objects.filter(email__iexact=new_email).exclude(pk=user_obj.pk).exists():
+                raise ValueError('Another account already uses this email address.')
+            user_obj.email = new_email
             user_obj.first_name = request.POST.get('first_name', '')
             user_obj.last_name = request.POST.get('last_name', '')
 
@@ -681,7 +699,8 @@ def edit_user(request, user_id):
             user_obj.is_staff = original_is_staff
             user_obj.is_superuser = original_is_superuser
 
-            selected_groups = request.POST.getlist('groups')
+            # Groups can carry admin permissions, so only superusers may change them.
+            selected_groups = request.POST.getlist('groups') if request.user.is_superuser else []
             if selected_groups:
                 user_obj.groups.clear()
                 for group_id in selected_groups:
@@ -700,7 +719,7 @@ def edit_user(request, user_id):
                 extra_info.append(f'Member of {user_obj.groups.count()} groups')
 
             extra = ' | '.join(extra_info) if extra_info else ''
-            messages.success(request, f'User <strong>{user_obj.email}</strong> updated successfully! {extra}')
+            messages.success(request, format_html('User <strong>{}</strong> updated successfully! {}', user_obj.email, extra))
             return redirect('signupdashboard')
         except Exception as e:
             messages.error(request, f'Error updating user: {str(e)}')
@@ -731,12 +750,14 @@ def delete_user(request, user_id):
     if user_obj.is_superuser:
         messages.error(request, 'Cannot delete superuser accounts!')
         return redirect('signupdashboard')
+    if not _can_manage_user(request.user, user_obj):
+        return _deny_user_management(request)
 
     if request.method == 'POST':
         try:
             user_email = user_obj.email
             user_obj.delete()
-            messages.success(request, f'User <strong>{user_email}</strong> deleted successfully!')
+            messages.success(request, format_html('User <strong>{}</strong> deleted successfully!', user_email))
             return redirect('signupdashboard')
         except Exception as e:
             messages.error(request, f'Error deleting user: {str(e)}')
@@ -753,13 +774,15 @@ def toggle_user_status(request, user_id):
     if user_obj.is_superuser:
         messages.error(request, 'Cannot change status of superuser accounts!')
         return redirect('signupdashboard')
+    if not _can_manage_user(request.user, user_obj):
+        return _deny_user_management(request)
 
     if request.method == 'POST':
         try:
             user_obj.is_active = not user_obj.is_active
             user_obj.save()
             action = 'activated' if user_obj.is_active else 'deactivated'
-            messages.success(request, f'User <strong>{user_obj.email}</strong> {action} successfully!')
+            messages.success(request, format_html('User <strong>{}</strong> {} successfully!', user_obj.email, action))
             return redirect('signupdashboard')
         except Exception as e:
             messages.error(request, f'Error changing user status: {str(e)}')
@@ -773,9 +796,8 @@ def reset_user_password(request, user_id):
     """Reset user password - with superuser protection"""
     user_obj = get_object_or_404(User, id=user_id)
 
-    if user_obj.is_superuser and not request.user.is_superuser:
-        messages.error(request, 'Only superusers can reset superuser passwords!')
-        return redirect('signupdashboard')
+    if not _can_manage_user(request.user, user_obj):
+        return _deny_user_management(request)
 
     if request.method == 'POST':
         try:
@@ -786,9 +808,12 @@ def reset_user_password(request, user_id):
 
             messages.success(
                 request,
-                f'Password reset for <strong>{user_obj.email}</strong>! New temporary password: '
-                f'<code style="background:#f3f4f6;padding:2px 6px;border-radius:4px;'
-                f'font-family:monospace;color:#dc2626;">{new_password}</code>'
+                format_html(
+                    'Password reset for <strong>{}</strong>! New temporary password: '
+                    '<code style="background:#f3f4f6;padding:2px 6px;border-radius:4px;'
+                    'font-family:monospace;color:#dc2626;">{}</code>',
+                    user_obj.email, new_password,
+                ),
             )
             return redirect('signupdashboard')
         except Exception as e:
@@ -916,7 +941,6 @@ def coupon_analytics(request):
 
 # ======================== PUBLIC COUPON APIs ========================
 
-@csrf_exempt
 @login_required
 def apply_coupon(request):
     """Apply coupon code (AJAX endpoint) - WITH USAGE TRACKING"""
@@ -975,7 +999,6 @@ def my_coupons(request):
         return JsonResponse({'success': False, 'message': 'Error loading coupons'})
 
 
-@csrf_exempt
 @login_required
 def use_coupon(request):
     """Actually use a coupon and track usage - for checkout process"""
@@ -2302,3 +2325,27 @@ def bundle_calculate_price(request):
         })
     
     return JsonResponse({'success': False, 'error': 'Invalid request'})
+
+
+# ======================== AUDIT LOG ========================
+
+@user_passes_test(lambda u: u.is_active and u.is_superuser)
+def audit_log(request):
+    """Superuser-only view of admin activity, staff logins and failed logins."""
+    entries = AdminAuditLog.objects.select_related('user')
+    action = request.GET.get('action', '')
+    query = request.GET.get('q', '').strip()[:100]
+    if action in dict(AdminAuditLog.ACTION_CHOICES):
+        entries = entries.filter(action=action)
+    if query:
+        entries = entries.filter(Q(user_email__icontains=query) | Q(path__icontains=query) | Q(ip_address__icontains=query))
+    page_obj = Paginator(entries, 50).get_page(request.GET.get('page'))
+    since = timezone.now() - timedelta(days=1)
+    return render(request, 'audit_log.html', {
+        'page_obj': page_obj,
+        'action': action,
+        'query': query,
+        'actions': AdminAuditLog.ACTION_CHOICES,
+        'failed_logins_24h': AdminAuditLog.objects.filter(action='login_failed', created_at__gte=since).count(),
+        'changes_24h': AdminAuditLog.objects.filter(action__in=['create', 'update', 'delete'], created_at__gte=since).count(),
+    })

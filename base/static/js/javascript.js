@@ -261,3 +261,39 @@ document.addEventListener('DOMContentLoaded', () => {
 
   backgrounds.forEach((element) => observer.observe(element));
 });
+
+// Prevent double submissions on normal (non-AJAX) forms and show a busy state.
+// Runs in the bubbling phase, after any form-specific handler; forms that handled the
+// submit themselves (preventDefault) or opt out with data-no-busy are left alone.
+(function () {
+  document.addEventListener('submit', function (e) {
+    var form = e.target;
+    if (e.defaultPrevented || !(form instanceof HTMLFormElement) || form.hasAttribute('data-no-busy')) return;
+    if (form.dataset.submitting === '1') { e.preventDefault(); return; }
+    form.dataset.submitting = '1';
+    form.setAttribute('aria-busy', 'true');
+    // Defer so the clicked button's name/value is still included in the submission.
+    setTimeout(function () {
+      form.querySelectorAll('button[type="submit"], button:not([type]), input[type="submit"]').forEach(function (btn) {
+        btn.disabled = true;
+        if (btn.tagName === 'BUTTON' && !btn.dataset.busyApplied) {
+          btn.dataset.busyApplied = '1';
+          btn.dataset.originalHtml = btn.innerHTML;
+          btn.innerHTML = '<i class="fa fa-spinner fa-spin" aria-hidden="true"></i> Please wait…';
+        }
+      });
+    }, 0);
+  });
+  // Restore buttons when the page comes back from the back/forward cache.
+  window.addEventListener('pageshow', function () {
+    document.querySelectorAll('form[data-submitting="1"]').forEach(function (form) {
+      delete form.dataset.submitting;
+      form.removeAttribute('aria-busy');
+      form.querySelectorAll('[data-busy-applied]').forEach(function (btn) {
+        btn.disabled = false;
+        btn.innerHTML = btn.dataset.originalHtml;
+        delete btn.dataset.busyApplied;
+      });
+    });
+  });
+})();

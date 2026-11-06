@@ -149,6 +149,24 @@
         /* Pagination wrap */
         .pagination-row { flex-wrap: wrap; justify-content: center; }
     }
+    .ts-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; min-width: 170px; }
+    .ts-act {
+        display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+        height: 30px; padding: 0 10px; border-radius: 8px; border: 1px solid #e3e5ec;
+        background: #fff; color: #374151; font: inherit; font-size: 12px; font-weight: 700;
+        text-decoration: none; white-space: nowrap; cursor: pointer; transition: background .15s, border-color .15s, color .15s;
+    }
+    .ts-act i { font-size: 11px; color: #9ca3af; }
+    .ts-act:hover { border-color: #14141b; color: #14141b; }
+    .ts-act:hover i { color: #14141b; }
+    .ts-act-primary { background: #FCBC00; border-color: #FCBC00; color: #14141b; }
+    .ts-act-primary i { color: #14141b; }
+    .ts-act-primary:hover { background: #E59C00; border-color: #E59C00; }
+    .ts-act-danger { color: #dc2626; border-color: #fecaca; background: #fff; }
+    .ts-act-danger i { color: #dc2626; }
+    .ts-act-danger:hover { background: #dc2626; border-color: #dc2626; color: #fff; }
+    .ts-act-danger:hover i { color: #fff; }
+    .mts-actions .ts-act { flex: 1 1 calc(50% - 4px); }
 </style>
 
 <div class="wrapper">
@@ -157,7 +175,7 @@
             <h1 class="h1">Test Series Management</h1>
             <p class="small">Create and manage all test series courses</p>
         </div>
-        <a href="{% url 'test_series_create' %}" class="btn btn-primary">➕ Add Test Series</a>
+        <a href="{% url 'test_series_create' %}" class="btn btn-primary"><i class="fas fa-plus"></i> Add Test Series</a>
     </div>
 
     <div class="panel ts-panel">
@@ -218,12 +236,12 @@
                                     {% if series.is_active %}<span style="color:#10b981;">Active</span>{% else %}<span style="color:#dc2626;">Inactive</span>{% endif %}
                                 </td>
                                 <td>
-                                    <div style="display:flex;gap:4px;flex-wrap:wrap;">
-                                        <a href="{% url 'test_series_detail' pk=series.pk %}" class="btn" style="padding:4px 8px;font-size:12px;background:#3b82f6;color:white;">📋 View</a>
-                                        <a href="{% url 'test_series_edit' pk=series.pk %}" class="btn" style="padding:4px 8px;font-size:12px;">✏️ Edit</a>
-                                        <a href="{% url 'test_create' series_pk=series.pk %}" class="btn btn-primary" style="padding:4px 8px;font-size:12px;">➕ Add Test</a>
-                                        <button type="button" class="btn" style="padding:4px 8px;font-size:12px;background:#dc2626;color:white;border:none;cursor:pointer;border-radius:4px;"
-                                                onclick="openDeleteModal('{% url 'test_series_delete' pk=series.pk %}','{{ series.title|escapejs }}','{{ series.total_tests }}','{{ series.total_questions }}')">🗑️ Delete</button>
+                                    <div class="ts-actions">
+                                        <a href="{% url 'test_series_detail' pk=series.pk %}" class="ts-act" title="View"><i class="fas fa-eye"></i><span>View</span></a>
+                                        <a href="{% url 'test_series_edit' pk=series.pk %}" class="ts-act" title="Edit"><i class="fas fa-pen"></i><span>Edit</span></a>
+                                        <a href="{% url 'test_create' series_pk=series.pk %}" class="ts-act ts-act-primary" title="Add test"><i class="fas fa-plus"></i><span>Add Test</span></a>
+                                        <button type="button" class="ts-act ts-act-danger" title="Delete"
+                                                onclick="openDeleteModal('{% url 'test_series_delete' pk=series.pk %}','{{ series.title|escapejs }}','{{ series.total_tests }}','{{ series.total_questions }}')"><i class="fas fa-trash"></i><span>Delete</span></button>
                                     </div>
                                 </td>
                             </tr>
@@ -282,11 +300,11 @@
                         </div>
 
                         <div class="mts-actions">
-                            <a href="{% url 'test_series_detail' pk=series.pk %}" class="btn" style="background:#3b82f6;color:white;">📋 View</a>
-                            <a href="{% url 'test_series_edit' pk=series.pk %}" class="btn">✏️ Edit</a>
-                            <a href="{% url 'test_create' series_pk=series.pk %}" class="btn btn-primary">➕ Add Test</a>
-                            <button type="button" class="btn" style="background:#dc2626;color:white;border:none;cursor:pointer;"
-                                    onclick="openDeleteModal('{% url 'test_series_delete' pk=series.pk %}','{{ series.title|escapejs }}','{{ series.total_tests }}','{{ series.total_questions }}')">🗑️ Delete</button>
+                            <a href="{% url 'test_series_detail' pk=series.pk %}" class="ts-act"><i class="fas fa-eye"></i><span>View</span></a>
+                            <a href="{% url 'test_series_edit' pk=series.pk %}" class="ts-act"><i class="fas fa-pen"></i><span>Edit</span></a>
+                            <a href="{% url 'test_create' series_pk=series.pk %}" class="ts-act ts-act-primary"><i class="fas fa-plus"></i><span>Add Test</span></a>
+                            <button type="button" class="ts-act ts-act-danger"
+                                    onclick="openDeleteModal('{% url 'test_series_delete' pk=series.pk %}','{{ series.title|escapejs }}','{{ series.total_tests }}','{{ series.total_questions }}')"><i class="fas fa-trash"></i><span>Delete</span></button>
                         </div>
 
                     </div>

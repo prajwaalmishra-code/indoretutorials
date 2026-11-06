@@ -11,7 +11,7 @@ from .models import (
     Coupon, CouponUsage, UserCoupon, Banner, StatCard, CTASection,
     AboutUsSection, WhyChooseUsItem, ServiceItem, NavbarSettings,
     FooterSettings, FooterLink, FooterLegalLink, SMTPConfiguration,
-    RazorpayConfiguration, ProductBundle
+    RazorpayConfiguration, ProductBundle, AdminAuditLog
 )
 
 
@@ -525,3 +525,22 @@ class ProductBundleAdmin(admin.ModelAdmin):
 admin.site.site_header = "Indore Tutorials Admin Panel"
 admin.site.site_title = "Indore Tutorials Admin"
 admin.site.index_title = "Welcome to Indore Tutorials Administration"
+
+
+
+@admin.register(AdminAuditLog)
+class AdminAuditLogAdmin(admin.ModelAdmin):
+    """Read-only: audit entries are written by the app, never edited."""
+    list_display = ('created_at', 'user_email', 'action', 'method', 'path', 'status_code', 'ip_address')
+    list_filter = ('action', 'method')
+    search_fields = ('user_email', 'path', 'ip_address')
+    date_hierarchy = 'created_at'
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False

@@ -8,6 +8,12 @@ import uuid
 from testseries.boards import BOARD_CHOICES
 import json
 
+def marks_num(value):
+    """Marks for display: 2 rather than 2.00, 2.5 rather than 2.50."""
+    value = float(value or 0)
+    return int(value) if value.is_integer() else round(value, 2)
+
+
 class TestSeries(models.Model):
     DIFFICULTY_CHOICES = [
         ('easy', 'Easy'),
@@ -131,7 +137,8 @@ class Test(models.Model):
     )
     PAPER_TYPES = [
         ('mock', 'Full mock test'),
-        ('subject', 'Subject test'),
+        ('subject', 'Sectional test'),
+        ('topic', 'Topic-wise test'),
         ('pyp', 'Previous year paper'),
     ]
     paper_type = models.CharField(max_length=10, choices=PAPER_TYPES, default='mock', db_index=True)
@@ -180,7 +187,7 @@ class Test(models.Model):
         """Update test statistics"""
         questions = self.questions.all()
         self.total_questions = questions.count()
-        self.total_marks = sum(q.marks for q in questions)
+        self.total_marks = round(sum(q.marks for q in questions))
         self.easy_questions = questions.filter(difficulty='easy').count()
         self.medium_questions = questions.filter(difficulty='medium').count()
         self.hard_questions = questions.filter(difficulty='hard').count()
@@ -221,7 +228,8 @@ class Question(models.Model):
     question_image = models.ImageField(upload_to='questions/', blank=True, null=True)
     
     # Marking scheme
-    marks = models.PositiveIntegerField(default=1)
+    marks = models.DecimalField(max_digits=6, decimal_places=2, default=1,
+                                validators=[MinValueValidator(0)], help_text="Marks for a correct answer (e.g. 2.5 for NDA Maths).")
     negative_marks = models.DecimalField(max_digits=5, decimal_places=2, default=0.25)
     
     # Options (stored as JSON)

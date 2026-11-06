@@ -175,21 +175,21 @@ class ProfileEditForm(forms.ModelForm):
         widgets = {
             'first_name': forms.TextInput(attrs={
                 'class': 'form-input', 
-                'placeholder': 'First Name *'
+                'placeholder': 'e.g. Rahul', 'autocomplete': 'given-name'
             }),
             'middle_name': forms.TextInput(attrs={
                 'class': 'form-input', 
-                'placeholder': 'Middle Name'
+                'placeholder': 'Optional'
             }),
             'last_name': forms.TextInput(attrs={
                 'class': 'form-input', 
-                'placeholder': 'Last Name *'
+                'placeholder': 'e.g. Sharma', 'autocomplete': 'family-name'
             }),
             'age': forms.NumberInput(attrs={
                 'class': 'form-input', 
                 'min': 1, 
                 'max': 120, 
-                'placeholder': 'Age *'
+                'placeholder': 'e.g. 16'
             }),
             'gender': forms.Select(attrs={
                 'class': 'form-input'
@@ -197,11 +197,11 @@ class ProfileEditForm(forms.ModelForm):
             'contact_number': forms.TextInput(attrs={
                 'class': 'form-input', 
                 'inputmode': 'tel', 
-                'placeholder': 'Contact Number *'
+                'placeholder': '10-digit mobile number', 'autocomplete': 'tel'
             }),
             'email': forms.EmailInput(attrs={
                 'class': 'form-input', 
-                'placeholder': 'Email Address *', 
+                'placeholder': 'you@example.com', 
                 'autocomplete': 'email'
             }),
             'profile_image': forms.FileInput(attrs={
@@ -223,8 +223,9 @@ class ProfileEditForm(forms.ModelForm):
         self.fields['email'].required = True
         self.fields['profile_image'].required = False
         
-        # Update gender field empty label
-        self.fields['gender'].empty_label = 'Select Gender *'
+        # Choice CharFields ignore empty_label; replace Django's "---------" option instead.
+        gender = self.fields['gender']
+        gender.choices = [('', 'Select gender')] + [c for c in gender.choices if c[0] != '']
 
     def clean_age(self):
         age = self.cleaned_data.get('age')

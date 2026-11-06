@@ -16,7 +16,9 @@
 <title>Backup Management - Admin</title>
 <style>
 html,body{width:100%;height:auto;margin:0;padding:0;background:#fff;font-family:var(--font-sans);}
-:root{--admin-bg:#ffffff;--admin-panel:#ffffff;--admin-panel-2:#fafbff;--admin-border:#e9ecf3;--admin-muted:#707793;--admin-text:#162033;--admin-primary:#c7212f;--admin-primary-600:#ad1830;--admin-primary-100:#fde8eb;--admin-success:#16a34a;--admin-warning:#f59e0b;--admin-danger:#dc2626;--admin-card-shadow:0 6px 18px rgba(16,24,40,.05);--admin-radius:14px;--admin-radius-sm:10px;--input-border:#d1d5db;--input-border-focus:#c7212f;--input-bg:#ffffff;}
+:root{--admin-bg:#ffffff;--admin-panel:#ffffff;--admin-panel-2:#fafbff;--admin-border:#e9ecf3;--admin-muted:#707793;--admin-text:#162033;--admin-primary:#FCBC00;
+  --admin-primary-text: #8A5E00;
+  --admin-primary-ink: #14141b;--admin-primary-600:#E59C00;--admin-primary-100:#FFF6DE;--admin-success:#16a34a;--admin-warning:#f59e0b;--admin-danger:#dc2626;--admin-card-shadow:0 6px 18px rgba(16,24,40,.05);--admin-radius:14px;--admin-radius-sm:10px;--input-border:#d1d5db;--input-border-focus:#E59C00;--input-bg:#ffffff;}
 a{text-decoration:none;}
 *{box-sizing:border-box;}
 
@@ -37,8 +39,8 @@ a{text-decoration:none;}
 
 /* Topbar */
 .admin-topbar{position:fixed;left:310px;top:0;right:0;height:64px;background:var(--admin-panel);border-bottom:1px solid var(--admin-border);display:flex;align-items:center;gap:14px;padding:0 14px;z-index:999;box-shadow:0 1px 3px rgba(0,0,0,.1);}
-.admin-topbar .admin-brand{display:flex;align-items:center;gap:10px;font-weight:800;color:var(--admin-primary);}
-.admin-topbar .admin-brand-logo{width:34px;height:34px;border-radius:8px;background:var(--admin-primary-100);display:flex;align-items:center;justify-content:center;color:var(--admin-primary);font-weight:900;}
+.admin-topbar .admin-brand{display:flex;align-items:center;gap:10px;font-weight:800;color: var(--admin-primary-text);}
+.admin-topbar .admin-brand-logo{width:34px;height:34px;border-radius:8px;background:var(--admin-primary-100);display:flex;align-items:center;justify-content:center;color: var(--admin-primary-text);font-weight:900;}
 
 /* Main */
 .admin-main{margin-left:300px;margin-top:64px;min-height:calc(100vh - 64px);padding:30px;background:var(--admin-bg);}
@@ -57,7 +59,7 @@ a{text-decoration:none;}
 .admin-card{margin-bottom:30px;border-radius:12px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.08);overflow:hidden;}
 .admin-card-hd{display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid #e5e7eb;gap:12px;}
 .admin-card-hd h3{margin:0;font-size:18px;font-weight:600;color:#1f2937;}
-.admin-card-hd h3 i{margin-right:8px;color:var(--admin-primary);}
+.admin-card-hd h3 i{margin-right:8px;color: var(--admin-primary-text);}
 .admin-card-bd{padding:0;overflow-x:auto;}
 
 /* Table */
@@ -70,7 +72,7 @@ a{text-decoration:none;}
 
 /* Buttons */
 .btn{border:1px solid var(--admin-border);background:#fff;border-radius:8px;padding:8px 14px;cursor:pointer;font-weight:600;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;transition:all .2s ease;}
-.btn-primary{background:var(--admin-primary);color:#fff;border-color:transparent;}
+.btn-primary{background:var(--admin-primary);color: #14141b;border-color:transparent;}
 .btn-primary:hover{background:var(--admin-primary-600);}
 .btn-sm{padding:5px 10px;font-size:12px;}
 .btn-outline-primary{color:#007bff;border-color:#007bff;}

@@ -95,7 +95,7 @@
                     <div class="preview-link">
                         <a href="#" id="preview-title">
                             {% if footer_link.title or footer_legal.title %}
-                                {{ footer_link.title|default:footer_legal.title }}
+                                {% firstof footer_link.title footer_legal.title %}
                             {% else %}
                                 Sample Link Title
                             {% endif %}
@@ -104,7 +104,7 @@
                     <div class="preview-url">
                         <small id="preview-url">
                             {% if footer_link.url or footer_legal.url %}
-                                {{ footer_link.url|default:footer_legal.url }}
+                                {% firstof footer_link.url footer_legal.url %}
                             {% else %}
                                 #
                             {% endif %}
@@ -212,8 +212,8 @@
 }
 
 .ad-btn-primary {
-    background: #c7212f;
-    color: white;
+    background: #FCBC00;
+    color: #14141b;
 }
 
 .ad-btn-secondary {

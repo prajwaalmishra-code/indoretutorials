@@ -318,7 +318,7 @@
         {% for item in purchases.video_courses %}
         <div class="purchase-card">
             {% if item.course.thumbnail %}
-                <img src="{{ item.course.thumbnail.url }}" alt="{{ item.course.name }}" class="purchase-thumbnail">
+                <img loading="lazy" decoding="async" src="{{ item.course.thumbnail.url }}" alt="{{ item.course.name }}" class="purchase-thumbnail">
             {% else %}
                 <div class="purchase-thumbnail" style="background: linear-gradient(135deg, #14141b 0%, #2c2c38 100%);"></div>
             {% endif %}
@@ -364,9 +364,9 @@
         {% for item in purchases.live_classes %}
         <div class="purchase-card">
             {% if item.course.banner_image_desktop %}
-                <img src="{{ item.course.banner_image_desktop.url }}" alt="{{ item.course.name }}" class="purchase-thumbnail">
+                <img loading="lazy" decoding="async" src="{{ item.course.banner_image_desktop.url }}" alt="{{ item.course.name }}" class="purchase-thumbnail">
             {% elif item.course.banner_image_mobile %}
-                <img src="{{ item.course.banner_image_mobile.url }}" alt="{{ item.course.name }}" class="purchase-thumbnail">
+                <img loading="lazy" decoding="async" src="{{ item.course.banner_image_mobile.url }}" alt="{{ item.course.name }}" class="purchase-thumbnail">
             {% else %}
                 <div class="purchase-thumbnail" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);"></div>
             {% endif %}
@@ -416,7 +416,7 @@
         {% for item in purchases.test_series %}
         <div class="purchase-card">
             {% if item.course.thumbnail %}
-                <img src="{{ item.course.thumbnail.url }}" alt="{{ item.course.title }}" class="purchase-thumbnail">
+                <img loading="lazy" decoding="async" src="{{ item.course.thumbnail.url }}" alt="{{ item.course.title }}" class="purchase-thumbnail">
             {% else %}
                 <div class="purchase-thumbnail" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);"></div>
             {% endif %}
@@ -462,7 +462,7 @@
         {% for item in purchases.elibrary_courses %}
         <div class="purchase-card">
             {% if item.course.cover_image %}
-                <img src="{{ item.course.cover_image.url }}" alt="{{ item.course.title }}" class="purchase-thumbnail">
+                <img loading="lazy" decoding="async" src="{{ item.course.cover_image.url }}" alt="{{ item.course.title }}" class="purchase-thumbnail">
             {% else %}
                 <div class="purchase-thumbnail" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);"></div>
             {% endif %}
@@ -504,9 +504,9 @@
         {% for item in purchases.bundles %}
         <div class="purchase-card">
             {% if item.course.thumbnail %}
-                <img src="{{ item.course.thumbnail.url }}" alt="{{ item.course.title }}" class="purchase-thumbnail">
+                <img loading="lazy" decoding="async" src="{{ item.course.thumbnail.url }}" alt="{{ item.course.title }}" class="purchase-thumbnail">
             {% elif item.course.banner_image %}
-                <img src="{{ item.course.banner_image.url }}" alt="{{ item.course.title }}" class="purchase-thumbnail">
+                <img loading="lazy" decoding="async" src="{{ item.course.banner_image.url }}" alt="{{ item.course.title }}" class="purchase-thumbnail">
             {% else %}
                 <div class="purchase-thumbnail" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);"></div>
             {% endif %}

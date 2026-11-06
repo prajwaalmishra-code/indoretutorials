@@ -11,10 +11,18 @@ from datetime import datetime
 from pathlib import Path
 
 from django.conf import settings
+from django.core.cache import cache
 
 logger = logging.getLogger(__name__)
 
 DB_PATH = str(Path(settings.BASE_DIR) / "db.sqlite3")
+# The listing is three Dropbox round trips (~2.5s); cache it and clear it on every change.
+BACKUP_LIST_CACHE_KEY = "dropbox-backup-list-v1"
+BACKUP_LIST_TIMEOUT = 60 * 10
+
+
+def clear_backup_list_cache():
+    cache.delete(BACKUP_LIST_CACHE_KEY)
 
 
 def _credentials():
@@ -110,6 +118,7 @@ class DropboxBackupManager:
             )
             file_size = _human_size(len(data))
             logger.info("Backup uploaded: %s (%s)", dropbox_path, file_size)
+            clear_backup_list_cache()
             return {
                 "success": True,
                 "filename": filename,
@@ -128,6 +137,9 @@ class DropboxBackupManager:
         Return a list of backup dicts sorted newest-first.
         Each dict: filename, path, size_bytes, size_human, modified (datetime).
         """
+        cached = cache.get(BACKUP_LIST_CACHE_KEY)
+        if cached is not None:
+            return cached
         try:
             dbx = _get_dbx()
             _ensure_folder(dbx)
@@ -150,6 +162,7 @@ class DropboxBackupManager:
                 result = dbx.files_list_folder_continue(result.cursor)
 
             backups.sort(key=lambda x: x["modified"], reverse=True)
+            cache.set(BACKUP_LIST_CACHE_KEY, backups, BACKUP_LIST_TIMEOUT)
             return backups
         except Exception as exc:
             logger.error("Failed to list backups: %s", exc)
@@ -217,6 +230,7 @@ class DropboxBackupManager:
             dbx = _get_dbx()
             dbx.files_delete_v2(dropbox_path)
             logger.info("Deleted Dropbox backup: %s", dropbox_path)
+            clear_backup_list_cache()
             return {"success": True, "message": f"Backup '{filename}' deleted successfully."}
         except Exception as exc:
             logger.error("Delete backup failed: %s", exc)

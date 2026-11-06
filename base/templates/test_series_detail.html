@@ -145,6 +145,7 @@
         .sd-type-flag { display: inline-flex; align-items: center; gap: 5px; margin: 0 4px 4px 0; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
         .sd-type-flag.pyp { background: #fef3c7; color: #92400e; }
         .sd-type-flag.subject { background: #eef2ff; color: #3730a3; }
+        .sd-type-flag.topic { background: #ecfdf5; color: #065f46; }
         .sd-tests [hidden] { display: none; }
         .sd-demo-flag { display: inline-flex; align-items: center; gap: 5px; margin-bottom: 4px; padding: 2px 9px; border-radius: 999px; background: #047857; color: #fff; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
         .sd-try { display: flex; align-items: center; gap: 12px; margin-top: 14px; padding: 12px 14px; border-radius: 12px; background: #f0fdf4; border: 1px solid #bbf7d0; font-size: 13.5px; color: #065f46; text-decoration: none; }
@@ -308,7 +309,7 @@
                 </div>
                 <div class="sd-hero-art" aria-hidden="true">
                     {% if test_series.thumbnail %}
-                        <img src="{{ test_series.thumbnail.url }}" alt="" class="sd-hero-thumb">
+                        <img loading="lazy" decoding="async" src="{{ test_series.thumbnail.url }}" alt="" class="sd-hero-thumb">
                     {% else %}
                         <div class="sd-hero-icon"><i class="fa-solid fa-{{ test_series.icon }}"></i></div>
                     {% endif %}
@@ -316,7 +317,7 @@
             </div>
 
             <div class="sd-stats">
-                <div class="sd-stat"><strong>{{ paid_tests|length }}</strong><span>Mock test{{ paid_tests|length|pluralize }}{% if demo_test %} + free demo{% endif %}</span></div>
+                <div class="sd-stat"><strong>{{ paid_tests|length }}</strong><span>Test{{ paid_tests|length|pluralize }}{% if demo_test %} + free demo{% endif %}</span></div>
                 <div class="sd-stat"><strong>{{ total_questions }}</strong><span>Questions</span></div>
                 <div class="sd-stat"><strong>{{ total_marks }}</strong><span>Total marks</span></div>
                 <div class="sd-stat"><strong>{{ total_minutes }}<small style="font-size: 14px;"> min</small></strong><span>Practice time</span></div>
@@ -416,7 +417,9 @@
                             {% if test.paper_type == 'pyp' and not test.is_demo %}
                                 <span class="sd-type-flag pyp"><i class="fa-solid fa-clock-rotate-left"></i> {% if test.exam_year %}Previous year paper {{ test.exam_year }}{% else %}Previous year pattern{% endif %}</span>
                             {% elif test.paper_type == 'subject' and not test.is_demo %}
-                                <span class="sd-type-flag subject"><i class="fa-solid fa-book"></i> Subject test</span>
+                                <span class="sd-type-flag subject"><i class="fa-solid fa-book"></i> Sectional test</span>
+                            {% elif test.paper_type == 'topic' and not test.is_demo %}
+                                <span class="sd-type-flag topic"><i class="fa-solid fa-bullseye"></i> Topic-wise test</span>
                             {% endif %}
                             <h3>{% if not test.is_demo %}<span class="sd-test-pre">Test {{ test.number }} &middot;</span> {% endif %}{{ test.title }}</h3>
                             {% if test.description %}<p class="sd-test-desc">{{ test.description }}</p>{% endif %}
@@ -551,7 +554,8 @@
 
                 <ul class="sd-includes">
                     <li class="sd-includes-title">This series includes</li>
-                    <li><i class="fa-solid fa-check"></i> {{ paid_tests|length }} full mock test{{ paid_tests|length|pluralize }}, {{ total_questions }} questions</li>
+                    <li><i class="fa-solid fa-check"></i> {{ paid_tests|length }} test{{ paid_tests|length|pluralize }}, {{ total_questions }} questions</li>
+                    {% for key, label, count in paper_tabs %}<li><i class="fa-solid fa-check"></i> {{ count }} {{ label|lower }}{{ count|pluralize }}</li>{% endfor %}
                     {% if demo_test %}<li><i class="fa-solid fa-check"></i> 1 free demo test to try first</li>{% endif %}
                     {% if subjects %}<li><i class="fa-solid fa-check"></i> {{ subjects|length }} subject{{ subjects|length|pluralize }} covered</li>{% endif %}
                     <li><i class="fa-solid fa-check"></i> Real exam timing and marking scheme</li>

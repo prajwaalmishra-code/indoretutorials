@@ -8,7 +8,7 @@
 /* ── Existing action button styles ── */
 .action-buttons { display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
 .action-btn { padding:6px 8px; border:1px solid var(--admin-border); background:white; cursor:pointer; border-radius:6px; text-decoration:none; font-size:14px; transition:all 0.2s; color:var(--admin-text); display:inline-flex; align-items:center; justify-content:center; }
-.action-btn:hover { background:var(--admin-panel-2); border-color:var(--admin-primary); color:var(--admin-primary); }
+.action-btn:hover { background:var(--admin-panel-2); border-color:var(--admin-primary); color: var(--admin-primary-text); }
 .delete-btn { border-color:#fecaca; color:#dc2626; }
 .delete-btn:hover { background:#fef2f2; border-color:#dc2626; color:#dc2626; }
 .admin-table td:last-child { position:relative; overflow:visible; }
@@ -108,7 +108,7 @@
   <!-- KPI Cards -->
   <div class="admin-kpis">
     <div class="admin-kpi">
-      <div class="admin-kpi-ico" style="background:#fef2f2;color:#c7212f;"><i class="fas fa-boxes"></i></div>
+      <div class="admin-kpi-ico" style="background:#fef2f2;color: #8A5E00;"><i class="fas fa-boxes"></i></div>
       <div>
         <div class="admin-kpi-label">Total Bundles</div>
         <div class="admin-kpi-value">{{ total_bundles }}</div>
@@ -211,7 +211,7 @@
                 <div style="font-weight:700;color:#16a34a;font-size:16px;">FREE</div>
                 <div style="font-size:11px;color:var(--admin-muted);">No charge</div>
               {% else %}
-                <div style="font-weight:600;color:var(--admin-primary);">₹{{ bundle.bundle_price }}</div>
+                <div style="font-weight:600;color: var(--admin-primary-text);">₹{{ bundle.bundle_price }}</div>
                 <div style="font-size:12px;color:var(--admin-muted);text-decoration:line-through;">₹{{ bundle.original_price }}</div>
               {% endif %}
             </td>
@@ -308,7 +308,7 @@
             {% if bundle.is_free %}
               <span style="color:#16a34a;font-weight:700;">FREE</span>
             {% else %}
-              <span style="color:var(--admin-primary);font-weight:600;">₹{{ bundle.bundle_price }}</span>
+              <span style="color: var(--admin-primary-text);font-weight:600;">₹{{ bundle.bundle_price }}</span>
               <span style="color:#9ca3af;text-decoration:line-through;font-size:11px;margin-left:4px;">₹{{ bundle.original_price }}</span>
             {% endif %}
           </span>

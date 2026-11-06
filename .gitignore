@@ -3,3 +3,6 @@
 __pycache__/
 *.py[cod]
 staticfiles/
+backups/
+base/secrets/
+*.pem

@@ -35,9 +35,11 @@ html, body {
   --admin-border: #e9ecf3;
   --admin-muted: #707793;
   --admin-text: #162033;
-  --admin-primary: #c7212f;
-  --admin-primary-600: #ad1830;
-  --admin-primary-100: #fde8eb;
+  --admin-primary: #FCBC00;
+  --admin-primary-text: #8A5E00;
+  --admin-primary-ink: #14141b;
+  --admin-primary-600: #E59C00;
+  --admin-primary-100: #FFF6DE;
   --admin-accent: #2d65f2;
   --admin-success: #16a34a;
   --admin-warning: #f59e0b;
@@ -45,9 +47,9 @@ html, body {
   --admin-card-shadow: 0 6px 18px rgba(16,24,40,0.05);
   --admin-radius: 14px;
   --admin-radius-sm: 10px;
-  --admin-ring: 0 0 0 3px rgba(199,33,47,.2);
+  --admin-ring: 0 0 0 3px rgba(252, 188, 0,.2);
   --input-border: #d1d5db;
-  --input-border-focus: #c7212f;
+  --input-border-focus: #E59C00;
   --input-bg: #ffffff;
 }
 
@@ -80,8 +82,9 @@ html, body {
   width: 280px;
   height: 100vh;
   padding: 12px;
-  background: #0f1b33;
-  color: #e1e6f5;
+  background: #14141b;
+  color: #e4e5ec;
+  border-right: 1px solid #23232e;
   overflow-y: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -103,7 +106,8 @@ html, body {
 .admin-sidebar .admin-sb-title { 
   font-weight: 800; 
   font-size: 14px; 
-  color: #9fb1ff; 
+  color: #FCBC00; 
+  letter-spacing: .06em;
   text-transform: uppercase; 
   text-decoration: none;
 }
@@ -121,27 +125,34 @@ html, body {
   gap: 10px; 
   padding: 10px 12px; 
   border-radius: 10px;
-  color: #c9d4ff; 
+  color: #c9cbd6; 
   text-decoration: none; 
   font-weight: 600; 
   font-size: 14px;
+  transition: background .15s, color .15s;
 }
 
 .admin-nav a:hover { 
-  background: #132653; 
+  background: #23232e; 
   color: #fff; 
 }
 
 .admin-nav a.admin-active { 
-  background: #1a3370; 
-  color: #fff; 
+  background: rgba(252, 188, 0, .14); 
+  color: #FCBC00; 
+  box-shadow: inset 3px 0 0 #FCBC00;
 }
 
 .admin-nav a .admin-ico { 
   width: 18px; 
   text-align: center; 
-  color: #9ab0ff; 
+  color: #8b8d9c; 
 }
+
+/* One calm icon colour; the active item lights up in brand gold. */
+.admin-nav .admin-ico i { color: inherit !important; }
+.admin-nav a:hover .admin-ico { color: #e4e5ec; }
+.admin-nav a.admin-active .admin-ico { color: #FCBC00; }
 
 .admin-submenu { 
   display: none; 
@@ -153,16 +164,16 @@ html, body {
   font-weight: 500; 
   font-size: 13px; 
   padding: 8px 12px; 
-  color: #b7c4ff;
+  color: #a9abb8;
 }
 
 .admin-submenu a:hover { 
-  background: #132653; 
+  background: #23232e; 
   color: #fff; 
 }
 
 .admin-dropdown.admin-open {
-  background: #1a3370;
+  background: #1d1d27;
   color: #fff;
 }
 
@@ -171,8 +182,8 @@ html, body {
 }
 
 .admin-submenu a.admin-active {
-  background: #142a58;
-  color: #fff;
+  background: rgba(252, 188, 0, .1);
+  color: #FCBC00;
 }
 
 .admin-topbar {
@@ -191,23 +202,29 @@ html, body {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
+.admin-topbar .admin-brand-logo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.admin-brand-text { display: flex; flex-direction: column; line-height: 1.15; }
+.admin-brand-name { color: #14141b; font-size: 15px; font-weight: 800; }
+.admin-brand-sub { color: var(--admin-muted); font-size: 11.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+
 .admin-topbar .admin-brand { 
   display: flex; 
   align-items: center; 
   gap: 10px; 
   font-weight: 800; 
-  color: var(--admin-primary); 
+  color: var(--admin-primary-text); 
 }
 
 .admin-topbar .admin-brand-logo {
-  width: 34px; 
-  height: 34px; 
-  border-radius: 8px; 
-  background: var(--admin-primary-100);
+  width: 36px; 
+  height: 36px; 
+  border-radius: 10px; 
+  overflow: hidden;
+  background: #14141b;
   display: flex; 
   align-items: center; 
   justify-content: center; 
-  color: var(--admin-primary); 
+  color: var(--admin-primary-text); 
   font-weight: 900;
 }
 
@@ -310,7 +327,7 @@ html, body {
   align-items: center; 
   justify-content: center;
   font-weight: 800; 
-  color: var(--admin-primary); 
+  color: var(--admin-primary-text); 
   background: var(--admin-primary-100);
   margin-right: 0;
 }
@@ -391,7 +408,7 @@ html, body {
 
 .admin-card-hd h3 i {
   margin-right: 8px;
-  color: #c7212f;
+  color: #8A5E00;
 }
 
 .admin-card-bd { 
@@ -451,8 +468,8 @@ html, body {
 }
 
 .admin-filter-btn {
-  background: #c7212f;
-  color: white;
+  background: #FCBC00;
+  color: #14141b;
   border: none;
   cursor: pointer;
   font-weight: 600;
@@ -463,13 +480,13 @@ html, body {
 
 .admin-filter-input:focus, .admin-filter-select:focus {
   outline: none;
-  border-color: #c7212f;
+  border-color: #FCBC00;
 }
 
 .admin-filter-btn:hover {
   background: #a01a26;
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(199, 33, 47, 0.3);
+  box-shadow: 0 2px 8px rgba(252, 188, 0, 0.3);
 }
 
 .table-wrapper {
@@ -508,7 +525,7 @@ html, body {
 }
 
 .admin-table th a:hover {
-  color: var(--admin-primary);
+  color: var(--admin-primary-text);
 }
 
 .admin-table tbody td {
@@ -796,7 +813,7 @@ html, body {
 
 .page-current {
   background: var(--admin-primary);
-  color: white;
+  color: #14141b;
   border-color: var(--admin-primary);
 }
 
@@ -843,7 +860,7 @@ input[type="email"]:focus,
 input[type="password"]:focus { 
   outline: none; 
   border-color: var(--input-border-focus); 
-  box-shadow: 0 0 0 3px rgba(199,33,47,.1), 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 0 0 3px rgba(252, 188, 0,.1), 0 1px 2px rgba(0, 0, 0, 0.05);
   background: #ffffff;
 }
 
@@ -892,7 +909,7 @@ textarea { resize: vertical; min-height: 80px; }
 
 .btn-primary { 
   background: var(--admin-primary); 
-  color: #fff; 
+  color: #14141b; 
   border-color: transparent; 
 }
 .btn-primary:hover { 
@@ -1033,7 +1050,7 @@ textarea { resize: vertical; min-height: 80px; }
   margin: 0;
 }
 
-.icon-total { background: #fef2f2; color: #c7212f; }
+.icon-total { background: #fef2f2; color: #8A5E00; }
 .icon-active { background: #f0fdf4; color: #16a34a; }
 .icon-usage { background: #fef3c7; color: #f59e0b; }
 .icon-discount { background: #e0f2fe; color: #0277bd; }
@@ -1071,7 +1088,7 @@ textarea { resize: vertical; min-height: 80px; }
 
 .coupon-code {
   font-weight: 600;
-  color: var(--admin-primary);
+  color: var(--admin-primary-text);
 }
 
 .status-expired { background: #ffebee; color: #c62828; }
@@ -1409,8 +1426,11 @@ body.admin-nav-loading .admin-main {
     
     <header class="admin-topbar">
       <div class="admin-brand">
-        <div class="admin-brand-logo">AC</div>
-        <div>Admin Console</div>
+        <div class="admin-brand-logo"><img src="{% static 'img/brand/logo-badge.png' %}" alt="" width="36" height="36"></div>
+        <div class="admin-brand-text">
+          <span class="admin-brand-name">Indore Tutorials</span>
+          <span class="admin-brand-sub">Admin Console</span>
+        </div>
       </div>
     </header>
     

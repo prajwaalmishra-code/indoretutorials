@@ -823,7 +823,7 @@
 <section class="course-header {% if is_purchased %}purchased{% elif course.is_free %}free{% endif %}">
     <div class="header-container">
         <div class="course-thumb">
-            <img src="{% if course.thumbnail %}{{ course.thumbnail.url }}{% else %}{% static 'img/default-thumb.jpg' %}{% endif %}" 
+            <img loading="lazy" decoding="async" src="{% if course.thumbnail %}{{ course.thumbnail.url }}{% else %}{% static 'img/default-thumb.jpg' %}{% endif %}" 
                  alt="{{ course.name }}">
         </div>
         <div class="course-info">
@@ -990,7 +990,7 @@
         <div class="sidebar-panel">
             <h2 class="panel-title">Instructor</h2>
             <div class="instructor-card">
-                <img src="{% if course.instructor_avatar %}{{ course.instructor_avatar.url }}{% else %}https://ui-avatars.com/api/?name={{ course.instructor_name }}&size=112&background=667eea&color=fff&bold=true{% endif %}" 
+                <img loading="lazy" decoding="async" src="{% if course.instructor_avatar %}{{ course.instructor_avatar.url }}{% else %}https://ui-avatars.com/api/?name={{ course.instructor_name }}&size=112&background=667eea&color=fff&bold=true{% endif %}" 
                      alt="{{ course.instructor_name }}" 
                      class="instructor-avatar">
                 <div class="instructor-info">

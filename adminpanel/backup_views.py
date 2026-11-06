@@ -10,7 +10,7 @@ from django.shortcuts import render, redirect
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 
-from .backup_utils import DropboxBackupManager
+from .backup_utils import DropboxBackupManager, clear_backup_list_cache
 from .forms import DropboxConfigurationForm
 from .models import DropboxConfiguration
 
@@ -70,6 +70,7 @@ def backup_configuration_save(request):
         DropboxConfiguration.objects.exclude(pk=config.pk).update(is_active=False)
         config.is_active = True
         config.save()
+        clear_backup_list_cache()
         messages.success(request, "Dropbox settings saved and activated.")
     else:
         messages.error(request, "Please correct the Dropbox settings below.")

@@ -2,11 +2,11 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.db.models import Q
+from django.db.models import Count, Q, Sum
 
 # Import models
 from video_courses.models import Category
-from testseries.models import TestSeries, Test, Question, Subject
+from testseries.models import TestSeries, Test, Question, Subject, marks_num
 
 
 @login_required
@@ -36,7 +36,7 @@ def is_admin(user):
 def test_series_manage(request):
     """Manage all test series courses"""
     search_query = request.GET.get('search', '')
-    test_series = TestSeries.objects.prefetch_related('tests')
+    test_series = TestSeries.objects.all()
 
     # Apply filters
     if search_query:
@@ -47,16 +47,26 @@ def test_series_manage(request):
 
     test_series = test_series.order_by('-created_at')
 
-    # Add stats
-    for series in test_series:
-        series.total_tests = series.tests.count()
-        series.total_questions = sum(test.questions.count() for test in series.tests.all())
-        series.total_marks = sum(sum(q.marks for q in test.questions.all()) for test in series.tests.all())
-
     # Pagination
     paginator = Paginator(test_series, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
+
+    # Live stats for the visible page only, counted in the database.
+    page_ids = [series.pk for series in page_obj]
+    stats = {
+        row['pk']: row
+        for row in TestSeries.objects.filter(pk__in=page_ids).values('pk').annotate(
+            tests_n=Count('tests', distinct=True),
+            questions_n=Count('tests__questions'),
+            marks_n=Sum('tests__questions__marks'),
+        )
+    }
+    for series in page_obj:
+        row = stats.get(series.pk, {})
+        series.total_tests = row.get('tests_n', 0)
+        series.total_questions = row.get('questions_n', 0)
+        series.total_marks = marks_num(row.get('marks_n'))
 
     context = {
         'page_obj': page_obj,
@@ -142,7 +152,7 @@ def test_series_detail(request, pk):
 
     for test in tests:
         test.question_count = test.questions.count()
-        test.total_marks = sum(q.marks for q in test.questions.all())
+        test.total_marks = marks_num(sum(q.marks for q in test.questions.all()))
         test.difficulty_breakdown = {
             'easy': test.questions.filter(difficulty='easy').count(),
             'medium': test.questions.filter(difficulty='medium').count(),

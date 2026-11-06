@@ -1,6 +1,7 @@
 from django.db import models
 from base.models import User
 from django.core.validators import FileExtensionValidator
+from base.validators import validate_pdf_content
 from video_courses.models import Category
 from video_courses.dropbox_storage import DropboxStorage
 import math
@@ -70,7 +71,7 @@ class ELibraryCourse(models.Model):
         storage=dropbox_storage,
         blank=True,
         null=True,
-        validators=[FileExtensionValidator(allowed_extensions=['pdf'])]
+        validators=[FileExtensionValidator(allowed_extensions=['pdf']), validate_pdf_content]
     )
 
     # Status
@@ -175,7 +176,7 @@ class ELibraryPDF(models.Model):
     file = models.FileField(
         upload_to='elibrary/pdfs/',
         storage=dropbox_storage,
-        validators=[FileExtensionValidator(allowed_extensions=['pdf'])]
+        validators=[FileExtensionValidator(allowed_extensions=['pdf']), validate_pdf_content]
     )
 
     # Organization

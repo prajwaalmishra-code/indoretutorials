@@ -53,6 +53,7 @@
   {% include "partials/theme_vars.html" %}
 </head>
 <body>
+    <a class="skip-link" href="#main-content">Skip to content</a>
 
     <!-- Developer Info Popup (Dynamic) -->
     {% render_developer_popup %}
@@ -63,6 +64,7 @@
     {% include "message.html" %}
     {% endblock navbard %}
 
+    <main id="main-content" tabindex="-1">
     {% block content %}
     {% render_banner_slider %}
 
@@ -85,6 +87,7 @@
     {% include "tutor_widget.html" %}
 
     {% endblock content %}
+    </main>
 
     {% block footer %}
     <!-- Footer -->

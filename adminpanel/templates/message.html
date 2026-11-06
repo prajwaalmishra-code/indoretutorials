@@ -15,7 +15,7 @@
             <div class="sitemsg-title">
                 {% if level == 'success' %}Success{% elif level == 'error' %}Something went wrong{% elif level == 'warning' %}Warning{% else %}Notice{% endif %}
             </div>
-            <div class="sitemsg-body">{{ message|safe }}</div>
+            <div class="sitemsg-body">{{ message }}</div>
         </div>
         <button type="button" class="sitemsg-close" onclick="closeSiteMsg({{ forloop.counter }})" aria-label="Dismiss notification">
             <i class="fa-solid fa-xmark"></i>

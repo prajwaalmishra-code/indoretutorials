@@ -1172,3 +1172,36 @@ class ProductBundle(models.Model):
         return total
     
 
+
+
+class AdminAuditLog(models.Model):
+    """Who changed what in the management area, plus staff logins and failed logins."""
+    ACTION_CHOICES = [
+        ('create', 'Create'),
+        ('update', 'Update'),
+        ('delete', 'Delete'),
+        ('login', 'Login'),
+        ('login_failed', 'Failed login'),
+        ('other', 'Other'),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+'
+    )
+    user_email = models.CharField(max_length=254, blank=True)
+    action = models.CharField(max_length=20, choices=ACTION_CHOICES, default='other', db_index=True)
+    method = models.CharField(max_length=8, blank=True)
+    path = models.CharField(max_length=500, blank=True)
+    view_name = models.CharField(max_length=120, blank=True)
+    object_id = models.CharField(max_length=64, blank=True)
+    status_code = models.PositiveSmallIntegerField(null=True, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "Audit log entry"
+        verbose_name_plural = "Audit log"
+
+    def __str__(self):
+        return f"{self.created_at:%Y-%m-%d %H:%M} {self.user_email or 'anonymous'} {self.action} {self.path}"

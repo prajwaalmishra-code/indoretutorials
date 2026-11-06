@@ -366,7 +366,7 @@
     {% elif not auth_settings.login_image %}
       <source media="(max-width: 960px)" srcset="{% static 'img/brand/auth-login-mobile.webp' %}">
     {% endif %}
-    <img src="{% if auth_settings.login_image %}{{ auth_settings.login_image.url }}{% else %}{% static 'img/loginformimg.jpg' %}{% endif %}" alt="Login illustration">
+    <img loading="lazy" decoding="async" src="{% if auth_settings.login_image %}{{ auth_settings.login_image.url }}{% else %}{% static 'img/loginformimg.jpg' %}{% endif %}" alt="Login illustration">
   </picture>
   <div class="auth-image-overlay">
     <div class="auth-image-quote">"Learning today, leading tomorrow."</div>

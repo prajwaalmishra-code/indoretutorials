@@ -44,14 +44,14 @@
 
 /* Highlight the box on hover to hint it's interactive */
 .image-preview-box:hover {
-    border-color: #c7212f;
-    box-shadow: 0 0 0 3px rgba(199,33,47,0.12);
+    border-color: #FCBC00;
+    box-shadow: 0 0 0 3px rgba(252, 188, 0,0.12);
 }
 
 /* Double-click flash effect */
 .image-preview-box.dblclick-flash {
-    border-color: #c7212f;
-    box-shadow: 0 0 0 4px rgba(199,33,47,0.25);
+    border-color: #FCBC00;
+    box-shadow: 0 0 0 4px rgba(252, 188, 0,0.25);
 }
 
 .image-preview-box img {
@@ -78,7 +78,7 @@
 .image-preview-overlay {
     position: absolute;
     inset: 0;
-    background: rgba(199,33,47,0.0);
+    background: rgba(252, 188, 0,0.0);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -87,7 +87,7 @@
 }
 
 .image-preview-box:hover .image-preview-overlay {
-    background: rgba(199,33,47,0.18);
+    background: rgba(252, 188, 0,0.18);
 }
 
 .image-preview-overlay-text {
@@ -148,9 +148,9 @@
 }
 
 .image-preview-placeholder:hover {
-    border-color: #c7212f;
+    border-color: #FCBC00;
     background: #fff5f5;
-    color: #c7212f;
+    color: #8A5E00;
 }
 
 .image-preview-placeholder svg {
@@ -349,7 +349,7 @@
 .upload-progress-fill {
     height: 100%;
     width: 0%;
-    background: linear-gradient(90deg, #c7212f, #ef4444);
+    background: linear-gradient(90deg, #E59C00, #FCBC00);
     border-radius: 999px;
     transition: width 0.1s linear;
     position: relative;
@@ -381,7 +381,7 @@
 
 #uploadProgressPercent {
     font-weight: 700;
-    color: #c7212f;
+    color: #8A5E00;
     font-size: 13px;
 }
 
@@ -404,8 +404,8 @@
 .upload-modal-dismiss {
     margin-top: 8px;
     padding: 10px 28px;
-    background: #c7212f;
-    color: #fff;
+    background: #FCBC00;
+    color: #14141b;
     border: none;
     border-radius: 8px;
     font-size: 14px;
@@ -767,11 +767,11 @@
      role="dialog" aria-modal="true" aria-labelledby="uploadModalTitle">
     <div class="upload-modal-box">
         <svg class="upload-icon-svg" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="32" cy="32" r="30" stroke="#c7212f" stroke-width="3" fill="#fff0f1"/>
+            <circle cx="32" cy="32" r="30" stroke="#FCBC00" stroke-width="3" fill="#fff0f1"/>
             <path d="M32 42V24M32 24l-7 7M32 24l7 7"
-                  stroke="#c7212f" stroke-width="2.5"
+                  stroke="#FCBC00" stroke-width="2.5"
                   stroke-linecap="round" stroke-linejoin="round"/>
-            <rect x="20" y="44" width="24" height="3" rx="1.5" fill="#c7212f" opacity="0.3"/>
+            <rect x="20" y="44" width="24" height="3" rx="1.5" fill="#FCBC00" opacity="0.3"/>
         </svg>
 
         <h3 class="upload-modal-title" id="uploadModalTitle">Preparing File</h3>

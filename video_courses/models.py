@@ -3,6 +3,7 @@ from django.utils.text import slugify
 from django.core.files.storage import default_storage
 from django.conf import settings
 from .dropbox_storage import DropboxStorage
+from base.validators import validate_video_extension
 
 # Initialize Dropbox storage
 dropbox_storage = DropboxStorage()
@@ -188,7 +189,8 @@ class CourseVideo(TimestampedModel):
 
     file = models.FileField(
         upload_to=course_video_upload,
-        storage=dropbox_storage
+        storage=dropbox_storage,
+        validators=[validate_video_extension],
     )
 
     thumb_image = models.ImageField(

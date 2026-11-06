@@ -27,7 +27,7 @@
     box-sizing: border-box;
   }
   
-  .form-input:focus, .form-file:focus { border-color: #7391ea; box-shadow: 0 0 0 3px rgba(115,145,234,0.2); }
+  .form-input:focus, .form-file:focus { border-color: var(--brand-primary); box-shadow: 0 0 0 3px rgba(var(--brand-primary-rgb), 0.2); background: #fff; }
   
   .field-error { 
     color: #d93025; 
@@ -95,12 +95,66 @@
     display: block;
   }
 
+  .profile-hero {
+    display: flex; align-items: center; gap: 18px; flex-wrap: wrap; margin-bottom: 22px; padding: 20px 22px;
+    border-radius: 16px; background: #14141b; color: #fff;
+    background-image: radial-gradient(circle at 100% 0, rgba(var(--brand-primary-rgb), .35), transparent 45%);
+  }
+  .profile-hero-avatar {
+    width: 64px; height: 64px; flex-shrink: 0; border-radius: 50%; overflow: hidden; display: grid; place-items: center;
+    background: var(--brand-primary); color: #14141b; font-size: 26px; font-weight: 800; border: 3px solid rgba(255,255,255,.15);
+  }
+  .profile-hero-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .profile-hero-info { flex: 1; min-width: 200px; }
+  .profile-hero-info h1 { margin: 0 0 4px; font-size: 1.35rem; font-weight: 800; color: #fff; }
+  .profile-hero-info p { margin: 0; color: #d4d5de; font-size: .95rem; word-break: break-all; }
+  .profile-hero-info small { color: #9a9cab; font-size: .82rem; }
+  .profile-badge { display: inline-flex; align-items: center; gap: 4px; margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: rgba(34,197,94,.16); color: #86efac; font-size: .75rem; font-weight: 700; word-break: normal; }
+  .profile-hero-links { display: flex; gap: 8px; flex-wrap: wrap; }
+  .profile-hero-links a {
+    display: inline-flex; align-items: center; gap: 7px; padding: 9px 14px; border-radius: 10px;
+    background: rgba(255,255,255,.08); color: #fff; font-size: .88rem; font-weight: 700; text-decoration: none;
+  }
+  .profile-hero-links a:hover { background: var(--brand-primary); color: #14141b; }
+  .profile-hero-links i { color: var(--brand-primary); }
+  .profile-hero-links a:hover i { color: #14141b; }
+
+  .pw-field { position: relative; }
+  .pw-field .form-input { padding-right: 46px; }
+  .pw-toggle {
+    position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 36px; height: 36px;
+    border: 0; border-radius: 8px; background: transparent; color: #8b8fa8; cursor: pointer;
+  }
+  .pw-toggle:hover { background: #eceefa; color: #313969; }
+  .pw-meter { height: 6px; margin-top: 4px; border-radius: 999px; background: #eceef5; overflow: hidden; }
+  .pw-meter span { display: block; height: 100%; width: 0; border-radius: inherit; transition: width .25s, background .25s; }
+
   @media (max-width: 768px) {
     .form-row { grid-template-columns: 1fr; }
+    .profile-hero-links { width: 100%; }
+    .profile-hero-links a { flex: 1; justify-content: center; }
   }
 </style>
 
 <div class="profile-page">
+
+  {% with u=request.user %}
+  <section class="profile-hero">
+    <div class="profile-hero-avatar">
+      {% if u.profile_image %}<img loading="lazy" decoding="async" src="{{ u.profile_image.url }}" alt="">{% else %}{{ u.first_name|default:u.email|first|upper }}{% endif %}
+    </div>
+    <div class="profile-hero-info">
+      <h1>{% if u.first_name %}{{ u.first_name }} {{ u.last_name }}{% else %}My Profile{% endif %}</h1>
+      <p>{{ u.email }}{% if u.is_verified %} <span class="profile-badge"><i class="fa fa-circle-check"></i> Verified</span>{% endif %}</p>
+      <small>Member since {{ u.date_joined|date:"M Y" }}</small>
+    </div>
+    <nav class="profile-hero-links" aria-label="Account">
+      <a href="{% url 'my_purchases' %}"><i class="fa fa-bag-shopping"></i> My Purchases</a>
+      <a href="{% url 'my_test_results' %}"><i class="fa fa-chart-line"></i> My Results</a>
+      <a href="{% url 'my_library' %}"><i class="fa fa-book-open"></i> My Library</a>
+    </nav>
+  </section>
+  {% endwith %}
 
   <div class="profile-grid">
 
@@ -114,9 +168,9 @@
         <!-- Profile Picture Section -->
         <div class="avatar-wrap">
           {% if request.user.profile_image %}
-            <img class="avatar" id="profileAvatar" src="{{ request.user.profile_image.url }}" alt="Profile">
+            <img loading="lazy" decoding="async" class="avatar" id="profileAvatar" src="{{ request.user.profile_image.url }}" alt="Profile">
           {% else %}
-            <img class="avatar" id="profileAvatar" src="{% static 'img/default-avatar.png' %}" alt="Profile">
+            <img loading="lazy" decoding="async" class="avatar" id="profileAvatar" src="{% static 'img/default-avatar.png' %}" alt="Profile">
           {% endif %}
 
           <div class="avatar-ctrls">
@@ -138,7 +192,7 @@
         <!-- Name Fields -->
         <div class="form-row">
           <div class="form-group {% if form.first_name.errors %}has-error{% endif %}">
-            <label class="form-label">First Name *</label>
+            <label class="form-label" for="{{ form.first_name.id_for_label }}">First Name *</label>
             {{ form.first_name }}
             {% if form.first_name.errors %}
               <div class="field-error">{{ form.first_name.errors.0 }}</div>
@@ -146,7 +200,7 @@
           </div>
           
           <div class="form-group {% if form.middle_name.errors %}has-error{% endif %}">
-            <label class="form-label">Middle Name</label>
+            <label class="form-label" for="{{ form.middle_name.id_for_label }}">Middle Name</label>
             {{ form.middle_name }}
             {% if form.middle_name.errors %}
               <div class="field-error">{{ form.middle_name.errors.0 }}</div>
@@ -156,7 +210,7 @@
 
         <div class="form-row">
           <div class="form-group {% if form.last_name.errors %}has-error{% endif %}">
-            <label class="form-label">Last Name *</label>
+            <label class="form-label" for="{{ form.last_name.id_for_label }}">Last Name *</label>
             {{ form.last_name }}
             {% if form.last_name.errors %}
               <div class="field-error">{{ form.last_name.errors.0 }}</div>
@@ -164,7 +218,7 @@
           </div>
           
           <div class="form-group {% if form.age.errors %}has-error{% endif %}">
-            <label class="form-label">Age *</label>
+            <label class="form-label" for="{{ form.age.id_for_label }}">Age *</label>
             {{ form.age }}
             {% if form.age.errors %}
               <div class="field-error">{{ form.age.errors.0 }}</div>
@@ -175,7 +229,7 @@
         <!-- Gender and Contact -->
         <div class="form-row">
           <div class="form-group {% if form.gender.errors %}has-error{% endif %}">
-            <label class="form-label">Gender *</label>
+            <label class="form-label" for="{{ form.gender.id_for_label }}">Gender *</label>
             {{ form.gender }}
             {% if form.gender.errors %}
               <div class="field-error">{{ form.gender.errors.0 }}</div>
@@ -183,7 +237,7 @@
           </div>
           
           <div class="form-group {% if form.contact_number.errors %}has-error{% endif %}">
-            <label class="form-label">Contact Number *</label>
+            <label class="form-label" for="{{ form.contact_number.id_for_label }}">Contact Number *</label>
             {{ form.contact_number }}
             {% if form.contact_number.errors %}
               <div class="field-error">{{ form.contact_number.errors.0 }}</div>
@@ -194,7 +248,7 @@
         <!-- Email -->
         <div class="form-row single">
           <div class="form-group {% if form.email.errors %}has-error{% endif %}">
-            <label class="form-label">Email Address *</label>
+            <label class="form-label" for="{{ form.email.id_for_label }}">Email Address *</label>
             {{ form.email }}
             {% if form.email.errors %}
               <div class="field-error">{{ form.email.errors.0 }}</div>
@@ -223,29 +277,30 @@
 
         <div class="form-row single">
           <div class="form-group">
-            <label class="form-label">Current Password</label>
-            <input type="password" name="old_password" class="form-input" autocomplete="current-password" required>
+            <label class="form-label" for="pwOld">Current Password</label>
+            <div class="pw-field"><input type="password" id="pwOld" name="old_password" class="form-input" autocomplete="current-password" required><button type="button" class="pw-toggle" aria-label="Show password"><i class="fa fa-eye"></i></button></div>
             <div class="field-error" data-error-for="old_password" hidden></div>
           </div>
         </div>
 
         <div class="form-row single">
           <div class="form-group">
-            <label class="form-label">New Password</label>
-            <input type="password" name="new_password1" class="form-input" autocomplete="new-password" minlength="8" required>
+            <label class="form-label" for="pwNew">New Password</label>
+            <div class="pw-field"><input type="password" id="pwNew" name="new_password1" class="form-input" autocomplete="new-password" minlength="8" required><button type="button" class="pw-toggle" aria-label="Show password"><i class="fa fa-eye"></i></button></div>
             <div class="field-error" data-error-for="new_password1" hidden></div>
           </div>
         </div>
 
         <div class="form-row single">
           <div class="form-group">
-            <label class="form-label">Confirm New Password</label>
-            <input type="password" name="new_password2" class="form-input" autocomplete="new-password" minlength="8" required>
+            <label class="form-label" for="pwConfirm">Confirm New Password</label>
+            <div class="pw-field"><input type="password" id="pwConfirm" name="new_password2" class="form-input" autocomplete="new-password" minlength="8" required><button type="button" class="pw-toggle" aria-label="Show password"><i class="fa fa-eye"></i></button></div>
             <div class="field-error" data-error-for="new_password2" hidden></div>
           </div>
         </div>
 
-        <p class="pw-help">Use at least 8 characters, mixing letters, numbers, and symbols.</p>
+        <div class="pw-meter" aria-hidden="true"><span id="pwMeterBar"></span></div>
+        <p class="pw-help" id="pwStrength">Use at least 8 characters, mixing letters, numbers, and symbols.</p>
 
         <div class="profile-actions">
           <button type="submit" class="btn-primary">Update Password</button>
@@ -261,6 +316,43 @@
 <script>
 (function() {
   'use strict';
+
+  // Show / hide password fields
+  document.querySelectorAll('.pw-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const input = btn.previousElementSibling;
+      const show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+      btn.innerHTML = '<i class="fa ' + (show ? 'fa-eye-slash' : 'fa-eye') + '"></i>';
+    });
+  });
+
+  // Password strength meter
+  const pwNew = document.getElementById('pwNew');
+  const pwBar = document.getElementById('pwMeterBar');
+  const pwText = document.getElementById('pwStrength');
+  if (pwNew && pwBar && pwText) {
+    const levels = [
+      ['Use at least 8 characters, mixing letters, numbers, and symbols.', '0%', '#e5e7eb'],
+      ['Weak - add more characters.', '25%', '#ef4444'],
+      ['Fair - mix in numbers or symbols.', '50%', '#f59e0b'],
+      ['Good password.', '75%', '#84cc16'],
+      ['Strong password.', '100%', '#16a34a'],
+    ];
+    pwNew.addEventListener('input', () => {
+      const v = pwNew.value;
+      let score = 0;
+      if (v.length >= 8) score++;
+      if (v.length >= 12) score++;
+      if (/[a-z]/.test(v) && /[A-Z]/.test(v)) score++;
+      if (/\d/.test(v) && /[^A-Za-z0-9]/.test(v)) score++;
+      const [text, width, color] = levels[v ? Math.max(1, score) : 0];
+      pwText.textContent = text;
+      pwBar.style.width = width;
+      pwBar.style.background = color;
+    });
+  }
 
   // Auto-dismiss flash messages after 3 seconds
   const flashes = document.querySelectorAll('.flash');

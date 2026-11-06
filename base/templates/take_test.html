@@ -1,4 +1,4 @@
-{% load static %}
+{% load static %}{% load question_tags %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10,8 +10,9 @@
     <link rel="stylesheet" href="{% static 'css/typography.css' %}">
     <style>
         :root {
-            --brand: #5b5fdd;
-            --brand-dark: #4338ca;
+            --brand: #1f2c4d;
+            --brand-dark: #14141b;
+            --gold: #FCBC00;
             --ink: #1f2937;
             --muted: #6b7280;
             --line: #e5e7eb;
@@ -53,6 +54,13 @@
         .cbt-timer.warn { background: #f59e0b; }
         .cbt-timer.danger { background: #dc2626; animation: pulse 1s infinite; }
         @keyframes pulse { 50% { opacity: .75; } }
+        @media (prefers-reduced-motion: reduce) { .cbt-timer.danger { animation: none; } }
+        .timeup-overlay { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; background: rgba(20,20,27,.72); padding: 16px; }
+        .timeup-overlay[hidden] { display: none; }
+        .timeup-card { width: min(380px, 100%); padding: 28px 24px; border-radius: 16px; background: #fff; text-align: center; }
+        .timeup-card i { font-size: 30px; color: #dc2626; margin-bottom: 10px; }
+        .timeup-card h2 { font-size: 22px; margin-bottom: 6px; }
+        .timeup-card p { color: var(--muted); font-size: 14px; }
 
         /* ── Layout ── */
         .cbt-body { display: grid; grid-template-columns: 1fr 320px; gap: 20px; max-width: 1320px; margin: 0 auto; padding: 88px 20px 24px; }
@@ -83,6 +91,7 @@
         .q-body { padding: 24px; }
         .question-text { font-size: var(--q-font); line-height: 1.7; margin-bottom: 22px; }
         .question-text img { max-width: 100%; margin-top: 14px; border-radius: 8px; }
+        .question-text .q-code { margin: 10px 0; padding: 12px 14px; border-radius: 8px; background: #0f172a; color: #e2e8f0; font: 14px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre; overflow-x: auto; }
         .options-container { display: grid; gap: 12px; }
         .option {
             display: flex; align-items: center; gap: 14px; padding: 14px 18px;
@@ -284,7 +293,7 @@
                             {% if sections|length > 1 %}<span class="q-section">{{ question.section }}</span>{% endif %}
                         </div>
                         <div class="q-marking">
-                            <span class="mark-chip mark-plus">+{{ question.marks }} correct</span>
+                            <span class="mark-chip mark-plus">+{{ question.marks|floatformat:"-2" }} correct</span>
                             {% if question.penalty %}<span class="mark-chip mark-minus">−{{ question.penalty|floatformat:"-2" }} wrong</span>
                             {% else %}<span class="mark-chip mark-zero">No negative</span>{% endif %}
                         </div>
@@ -292,8 +301,8 @@
 
                     <div class="q-body">
                         <div class="question-text">
-                            {{ question.question_text|linebreaksbr }}
-                            {% if question.question_image %}<img src="{{ question.question_image.url }}" alt="Question image">{% endif %}
+                            {{ question.question_text|question_html }}
+                            {% if question.question_image %}<img loading="lazy" decoding="async" src="{{ question.question_image.url }}" alt="Question image">{% endif %}
                         </div>
 
                         <div class="options-container">
@@ -501,6 +510,8 @@
         const TOTAL = {{ questions|length }};
         const STORE_KEY = 'exam-{{ attempt.id }}';
         const form = document.getElementById('test-form');
+        // Count down to a fixed deadline so throttled background tabs or a sleeping phone can't drift.
+        const deadline = Date.now() + {{ time_remaining }} * 1000;
         let timeRemaining = {{ time_remaining }};
         let submitting = false;
         let state = { current: 1, visited: [1], marked: [], answers: {}, notes: '', font: 17, seenInstructions: false };
@@ -606,12 +617,13 @@
             return (h ? h + ':' + String(m).padStart(2, '0') : String(m).padStart(2, '0')) + ':' + String(sec).padStart(2, '0');
         };
         function tick() {
-            document.getElementById('time-display').textContent = fmt(Math.max(0, timeRemaining));
+            timeRemaining = Math.max(0, Math.round((deadline - Date.now()) / 1000));
+            document.getElementById('time-display').textContent = fmt(timeRemaining);
             timerEl.classList.toggle('warn', timeRemaining <= 300 && timeRemaining > 60);
             timerEl.classList.toggle('danger', timeRemaining <= 60);
-            if (timeRemaining <= 0) { clearInterval(timer); submitTest(true); return; }
-            timeRemaining--;
+            if (timeRemaining <= 0) { clearInterval(timer); submitTest(true); }
         }
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); });
         const timer = setInterval(tick, 1000);
         tick();
 
@@ -636,7 +648,8 @@
             const btn = document.getElementById('final-submit');
             btn.disabled = true;
             btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Submitting…';
-            if (auto) alert('Time is up! Your test is being submitted.');
+            // Never block on alert(): the answers must reach the server before the grace period ends.
+            if (auto) document.getElementById('timeup-overlay').hidden = false;
             try { localStorage.removeItem(STORE_KEY); } catch (e) {}
             form.submit();
         };
@@ -776,5 +789,12 @@
     })();
     {% endif %}
     </script>
+    <div class="timeup-overlay" id="timeup-overlay" role="alertdialog" aria-live="assertive" hidden>
+        <div class="timeup-card">
+            <i class="fa fa-hourglass-end"></i>
+            <h2>Time is up</h2>
+            <p>Your answers are being submitted. Please don't close this page.</p>
+        </div>
+    </div>
 </body>
 </html>

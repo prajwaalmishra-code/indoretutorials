@@ -461,6 +461,9 @@
     }
     .sx-summary { margin: 12px 0 0; font-size: 14.5px; color: #4b5563; }
     .sx-summary strong { color: #111827; }
+    .sx-corrected { display: inline-flex; align-items: center; gap: 6px; margin-left: 10px; padding: 3px 10px; border-radius: 999px; background: rgba(var(--brand-primary-rgb), .12); font-size: 13px; }
+    .sx-corrected i { color: var(--brand-primary-text); }
+    .sx-corrected a { color: #111827; font-weight: 700; text-decoration: none; }
     .sx-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
     .sx-chip {
         display: inline-flex; align-items: center; gap: 7px; padding: 7px 13px; border-radius: 999px;
@@ -517,6 +520,7 @@
         {% if query %}
             <p class="sx-summary">
                 {% if total_results %}<strong>{{ total_results }}</strong> result{{ total_results|pluralize }} found{% else %}No results found{% endif %}
+                {% if corrected %}<span class="sx-corrected"><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> Showing results for <a href="?q={{ corrected|urlencode }}">{{ corrected }}</a></span>{% endif %}
             </p>
             {% if total_results %}
             <div class="sx-chips" role="group" aria-label="Filter results by type">

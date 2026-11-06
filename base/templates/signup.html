@@ -137,7 +137,7 @@
           {% elif not auth_settings.signup_image %}
             <source media="(max-width: 960px)" srcset="{% static 'img/brand/auth-signup-mobile.webp' %}">
           {% endif %}
-          <img src="{% if auth_settings.signup_image %}{{ auth_settings.signup_image.url }}{% else %}{% static 'img/brand/auth-signup.webp' %}{% endif %}" alt="Signup illustration">
+          <img loading="lazy" decoding="async" src="{% if auth_settings.signup_image %}{{ auth_settings.signup_image.url }}{% else %}{% static 'img/brand/auth-signup.webp' %}{% endif %}" alt="Signup illustration">
         </picture>
         <div class="auth-image-overlay">
           <div class="auth-image-quote">"Join thousands of learners building their future."</div>

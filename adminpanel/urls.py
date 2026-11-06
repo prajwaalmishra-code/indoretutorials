@@ -156,6 +156,7 @@ urlpatterns = [
     # DATABASE BACKUP (Superadmin only)
     # ================================================================
     path('backup/', backup_views.backup_dashboard, name='backup_dashboard'),
+    path('audit-log/', views.audit_log, name='audit_log'),
     path('backup/configuration/', backup_views.backup_configuration_save, name='backup_configuration_save'),
     path('backup/now/', backup_views.backup_now, name='backup_now'),
     path('backup/restore/', backup_views.backup_restore, name='backup_restore'),

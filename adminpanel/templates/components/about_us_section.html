@@ -7,9 +7,9 @@
     <div class="aboutus-info-card">
       <div class="aboutus-logo-row">
         {% if about_us.logo %}
-          <img src="{{ about_us.logo.url }}" alt="{{ about_us.company_name }} Logo" class="aboutus-logo">
+          <img loading="lazy" decoding="async" src="{{ about_us.logo.url }}" alt="{{ about_us.company_name }} Logo" class="aboutus-logo">
         {% else %}
-          <img src="{% load static %}{% static 'img/mainlogo.png' %}" alt="Indore Tutorials Logo" class="aboutus-logo">
+          <img loading="lazy" decoding="async" src="{% load static %}{% static 'img/mainlogo.png' %}" alt="Indore Tutorials Logo" class="aboutus-logo">
         {% endif %}
         <div class="aboutus-company">{{ about_us.company_name }}</div>
       </div>

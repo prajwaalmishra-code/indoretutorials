@@ -5,7 +5,7 @@ from django.contrib.auth import authenticate, login, logout, update_session_auth
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.hashers import make_password
 from django.core.cache import cache
-from django.core.mail import send_mail
+from django.core.mail import get_connection, send_mail
 from django.contrib.staticfiles import finders
 from django.db import transaction
 from django.db.models import Count, Sum, Prefetch, Q, Avg, F, Max, Min
@@ -19,6 +19,7 @@ from django.http import (
     HttpResponseBadRequest
 )
 from django.shortcuts import render, redirect, get_object_or_404
+from django.template import loader
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
@@ -41,10 +42,17 @@ from .forms import (
 from .models import User, OTPVerification, UserCourseAccess, Payment, Notification as UserNotification
 
 from .utils import has_smtp_configured, create_and_send_otp
+from .search import search as site_search, ranked_ids
+from .security import (
+    clear_otp_failures, is_rate_limited, otp_locked, record_otp_failure, reset_rate_limit,
+)
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 
 from video_courses.models import VideoCourse, Category
 from live_class.models import LiveClassCourse, LiveClassSession
-from testseries.models import TestSeries, Test, TestAttempt, StudentAnswer, Subject, Question
+from testseries.models import TestSeries, Test, TestAttempt, StudentAnswer, Subject, Question, marks_num
+from testseries.stats import apply_counts, subject_options
 from testseries.boards import CATEGORY_BOARD_CODES, STATE_BOARDS
 from testseries.exam_tools import EXAM_GROUPS
 from django.core.paginator import Paginator
@@ -254,14 +262,23 @@ def extra_page_detail(request, slug):
 @require_POST
 def contact_submit(request):
     """Handle the homepage 'Contact Us' lead form."""
-    name = request.POST.get('name', '').strip()
-    email = request.POST.get('email', '').strip()
-    phone = request.POST.get('phone', '').strip()
-    subject = request.POST.get('subject', '').strip()
-    message_text = request.POST.get('message', '').strip()
+    name = request.POST.get('name', '').strip()[:120]
+    email = request.POST.get('email', '').strip()[:254]
+    phone = request.POST.get('phone', '').strip()[:20]
+    subject = request.POST.get('subject', '').strip()[:200]
+    message_text = request.POST.get('message', '').strip()[:5000]
 
     if not name or not email or not message_text:
         messages.error(request, 'Please fill in your name, email and message.')
+        return redirect(f"{reverse('home')}#contact-us")
+    try:
+        from django.core.validators import validate_email
+        validate_email(email)
+    except ValidationError:
+        messages.error(request, 'Please enter a valid email address.')
+        return redirect(f"{reverse('home')}#contact-us")
+    if is_rate_limited(request, 'contact', limit=5, window=60 * 60):
+        messages.error(request, 'You have sent several messages already. Please try again later.')
         return redirect(f"{reverse('home')}#contact-us")
 
     ContactSubmission.objects.create(
@@ -731,11 +748,7 @@ def _apply_series_cover(series_list):
 
 def _series_cards(queryset, user):
     """Test series ready for the shared card: paid-test counts, demo flag, cover, price and purchase status."""
-    series_list = list(queryset.annotate(
-        active_test_count=Count('tests', filter=Q(tests__is_active=True, tests__is_demo=False), distinct=True),
-        active_question_count=Count('tests__questions', filter=Q(tests__is_active=True, tests__is_demo=False), distinct=True),
-        demo_count=Count('tests', filter=Q(tests__is_active=True, tests__is_demo=True), distinct=True),
-    ))
+    series_list = apply_counts(list(queryset))
     purchased = set()
     if user.is_authenticated:
         purchased = set(
@@ -754,15 +767,11 @@ def _test_series_directory(purchased_ids):
     Every active test series grouped into tabs for the home page directory:
     CBSE/ICSE/UP Board by class, state boards as a board x class table, then exam groups.
     """
-    series_list = list(
+    series_list = apply_counts(list(
         TestSeries.objects.filter(is_active=True)
-        .annotate(
-            active_test_count=Count('tests', filter=Q(tests__is_active=True, tests__is_demo=False), distinct=True),
-            active_question_count=Count('tests__questions', filter=Q(tests__is_active=True, tests__is_demo=False), distinct=True),
-        )
         .only('id', 'title', 'board', 'grade', 'stream', 'exam', 'is_free', 'price', 'difficulty')
         .order_by('grade', 'stream', 'title')
-    )
+    ))
     if not series_list:
         return []
 
@@ -980,7 +989,7 @@ def home(request):
         paid = [test for test in series.active_tests_list if not test.is_demo]
         series.total_tests = len(paid)
         series.total_questions = sum(test.question_count for test in paid)
-        series.total_marks = sum(test.total_marks_sum or 0 for test in paid)
+        series.total_marks = marks_num(sum(test.total_marks_sum or 0 for test in paid))
         series.free_tests = (
             len(series.active_tests_list) if series.is_free
             else len(series.active_tests_list) - len(paid)
@@ -1255,7 +1264,7 @@ def test_series_detail(request, pk):
             'questions': 0, 'marks': 0, 'tests': 0,
         })
         subject['questions'] += row['questions']
-        subject['marks'] += row['marks'] or 0
+        subject['marks'] = marks_num(subject['marks'] + (row['marks'] or 0))
         subject['tests'] += 1
 
     attempts_by_test = {}
@@ -1265,11 +1274,11 @@ def test_series_detail(request, pk):
 
     for test in tests:
         test.question_count = test.q_count
-        test.total_marks = test.marks_sum or 0
+        test.total_marks = marks_num(test.marks_sum)
         test.sections = sections_by_test.get(test.id, [])
         test.penalty = test.max_penalty if test_series.has_negative_marking and test.max_penalty else 0
         test.marks_range = (
-            f"{test.min_marks:g}" if test.min_marks == test.max_marks else f"{test.min_marks:g}–{test.max_marks:g}"
+            f"{marks_num(test.min_marks)}" if test.min_marks == test.max_marks else f"{marks_num(test.min_marks)}–{marks_num(test.max_marks)}"
         ) if test.question_count else ''
         test.unlocked = has_access or test.is_demo
         attempts = attempts_by_test.get(test.id, [])
@@ -1353,28 +1362,27 @@ def start_test(request, test_id):
         messages.error(request, f'You have already used all {test.max_attempts} attempts for this test.')
         return redirect('front_exam_series_detail', pk=test.test_series.pk)
     
-    # Check for incomplete attempts
-    incomplete_attempt = TestAttempt.objects.filter(
-        user=request.user,
-        test=test,
-        status__in=['started', 'in_progress']
-    ).first()
-    
-    if incomplete_attempt:
-        return redirect('front_exam_session', attempt_id=incomplete_attempt.id)
-    
-    # Get total marks for the test
     total_marks = test.questions.aggregate(Sum('marks'))['marks__sum'] or 0
-    
-    # Create new test attempt
-    attempt = TestAttempt.objects.create(
-        user=request.user,
-        test=test,
-        attempt_number=user_attempts + 1,
-        total_questions=test.questions.count(),
-        total_marks=total_marks,
-        status='in_progress'
-    )
+
+    with transaction.atomic():
+        # Lock the user row so two quick clicks can't both create an attempt.
+        User.objects.select_for_update().filter(pk=request.user.pk).first()
+        incomplete_attempt = TestAttempt.objects.filter(
+            user=request.user,
+            test=test,
+            status__in=['started', 'in_progress']
+        ).first()
+        if incomplete_attempt:
+            return redirect('front_exam_session', attempt_id=incomplete_attempt.id)
+
+        attempt = TestAttempt.objects.create(
+            user=request.user,
+            test=test,
+            attempt_number=user_attempts + 1,
+            total_questions=test.questions.count(),
+            total_marks=total_marks,
+            status='in_progress'
+        )
     
     messages.success(request, f'Test started! You have {test.duration_minutes} minutes to complete.')
     return redirect('front_exam_session', attempt_id=attempt.id)
@@ -1418,7 +1426,7 @@ def take_test(request, attempt_id):
         question.penalty = question.negative_marks if negative_marking and question.negative_marks else 0
         section = sections.setdefault(question.section, {'name': question.section, 'numbers': [], 'marks': 0})
         section['numbers'].append(number)
-        section['marks'] += question.marks
+        section['marks'] = marks_num(section['marks'] + question.marks)
 
     context = {
         'attempt': attempt,
@@ -1426,11 +1434,48 @@ def take_test(request, attempt_id):
         'series': attempt.test.test_series,
         'questions': questions,
         'sections': list(sections.values()),
-        'total_marks': sum(q.marks for q in questions),
+        'total_marks': marks_num(sum(q.marks for q in questions)),
         'negative_marking': negative_marking and any(q.penalty for q in questions),
         'time_remaining': max(0, time_remaining),
     }
     return render(request, 'take_test.html', context)
+
+
+EXAM_SUBMIT_GRACE_SECONDS = 120
+
+
+def _clean_submitted_answer(question, value):
+    """Drop anything that isn't a real option of this question (tampered forms count as unanswered)."""
+    option_keys = {str(k).lower() for k in question.options} if isinstance(question.options, dict) else set()
+    if isinstance(value, list):
+        value = [str(v).strip()[:20] for v in value][:20]
+        if option_keys:
+            value = sorted({v for v in value if v.lower() in option_keys})
+        return value
+    value = str(value or '').strip()[:500]
+    if question.question_type == 'mcq_single' and option_keys and value.lower() not in option_keys:
+        return ''
+    return value
+
+
+def _same_number(given, expected, correct_answer):
+    """Numerical answers match by value: '12', '12.0' and '12.00' are the same; an optional tolerance is honoured."""
+    try:
+        given_value = float(str(given).replace(',', '').replace('−', '-'))
+        expected_value = float(str(expected).replace(',', '').replace('−', '-'))
+    except ValueError:
+        return False
+    tolerance = 0.0
+    if isinstance(correct_answer, dict):
+        try:
+            tolerance = float(correct_answer.get('tolerance') or 0)
+        except (TypeError, ValueError):
+            tolerance = 0.0
+    return abs(given_value - expected_value) <= max(tolerance, 1e-9 + abs(expected_value) * 1e-9)
+
+
+def _attempt_deadline(attempt):
+    return attempt.started_at + timedelta(minutes=attempt.test.duration_minutes)
 
 
 def _finalize_test_attempt(attempt, post_data):
@@ -1453,7 +1498,8 @@ def _finalize_test_attempt(attempt, post_data):
     subject_wise_score = {}
 
     # Get all questions for this test
-    questions = attempt.test.questions.all()
+    questions = attempt.test.questions.select_related('subject')
+    StudentAnswer.objects.filter(attempt=attempt).delete()
 
     # Process each question
     for question in questions:
@@ -1464,6 +1510,7 @@ def _finalize_test_attempt(attempt, post_data):
             selected_answer = post_data.getlist(answer_key)
         else:
             selected_answer = post_data.get(answer_key, '')
+        selected_answer = _clean_submitted_answer(question, selected_answer)
 
         # Check if answered
         is_answered = bool(selected_answer) and not (isinstance(selected_answer, list) and len(selected_answer) == 0)
@@ -1527,6 +1574,8 @@ def _finalize_test_attempt(attempt, post_data):
                 correct_value = ''
 
             is_correct = student_answer == correct_value
+            if not is_correct and question.question_type == 'numerical':
+                is_correct = _same_number(student_answer, correct_value, correct_answer)
 
         # Calculate marks
         if is_correct:
@@ -1611,25 +1660,39 @@ def _finalize_test_attempt(attempt, post_data):
 
 @login_required
 def submit_test(request, attempt_id):
-    """Submit test and calculate results"""
-    attempt = get_object_or_404(TestAttempt, id=attempt_id, user=request.user)
+    """
+    Submit and grade a test exactly once.
+    The attempt is claimed with a conditional UPDATE inside a transaction, so double clicks,
+    a second tab or a replayed request can never grade (or re-grade) the same attempt.
+    Answers posted after the time limit (plus a short network grace) are ignored.
+    """
+    attempt = get_object_or_404(TestAttempt.objects.select_related('test', 'test__test_series'), id=attempt_id, user=request.user)
 
     if attempt.status == 'submitted':
         messages.info(request, 'This test has already been submitted.')
         return redirect('front_exam_result', attempt_id=attempt.id)
 
-    if request.method == 'POST':
-        _finalize_test_attempt(attempt, request.POST)
-        messages.success(request, 'Test submitted successfully!')
-        return redirect('front_exam_result', attempt_id=attempt.id)
-
-    # GET request — reached when the session view detects time has run out
-    # and redirects here. There is no answer payload on a GET, so grade with
-    # an empty submission (everything counts as skipped) instead of bouncing
-    # back to the session view, which would re-detect the expiry and loop.
     from django.http import QueryDict
-    _finalize_test_attempt(attempt, QueryDict())
-    messages.warning(request, 'Time was up — your test was submitted automatically.')
+    late = timezone.now() > _attempt_deadline(attempt) + timedelta(seconds=EXAM_SUBMIT_GRACE_SECONDS)
+    # A GET is the session view's timeout redirect: nothing was posted, everything counts as skipped.
+    answers = request.POST if request.method == 'POST' and not late else QueryDict()
+
+    with transaction.atomic():
+        claimed = TestAttempt.objects.filter(
+            pk=attempt.pk, user=request.user, status__in=['started', 'in_progress']
+        ).update(status='submitted', submitted_at=timezone.now())
+        if not claimed:
+            messages.info(request, 'This test has already been submitted.')
+            return redirect('front_exam_result', attempt_id=attempt.id)
+        _finalize_test_attempt(attempt, answers)
+
+    if request.method != 'POST':
+        messages.warning(request, 'Time was up — your test was submitted automatically.')
+    elif late:
+        logger.warning("Late exam submission ignored: attempt=%s user=%s", attempt.pk, request.user.pk)
+        messages.warning(request, 'Time was up before your answers arrived, so the test was submitted without them.')
+    else:
+        messages.success(request, 'Test submitted successfully!')
     return redirect('front_exam_result', attempt_id=attempt.id)
 
 
@@ -1662,7 +1725,7 @@ def test_result(request, attempt_id):
             'name': name, 'total': 0, 'correct': 0, 'wrong': 0, 'skipped': 0, 'marks': 0.0, 'max_marks': 0,
         })
         section['total'] += 1
-        section['max_marks'] += question.marks
+        section['max_marks'] = marks_num(section['max_marks'] + question.marks)
         marks = float(answer.marks_obtained)
         section['marks'] += marks
         if not answer.is_attempted:
@@ -2022,138 +2085,116 @@ def loginuser(request):
 
 
 def login_view(request):
-    """Handle user login with 'remember me'"""
+    """Handle user login with 'remember me'. Rate limited per IP and per account."""
     if request.user.is_authenticated:
         return redirect('home')
-    
+
     if request.method == 'POST':
-        email = request.POST.get('email', '').strip().lower()  # Normalize email
+        email = request.POST.get('email', '').strip().lower()[:254]
         password = request.POST.get('password', '')
         remember = request.POST.get('remember')
-        
-        
+
         if not email or not password:
             messages.error(request, 'Please enter both email and password.')
-            return render(request, 'login.html')
-        
-        # Check if user exists first
-        try:
-            user_exists = User.objects.filter(email__iexact=email).exists()
-        except Exception as e:
-            print(f"Database error: {e}")
-            messages.error(request, 'An error occurred. Please try again.')
-            return render(request, 'login.html')
-        
-        if not user_exists:
-            messages.error(request, 'No account found with this email.')
-            return render(request, 'login.html')
-        
-        # Authenticate user
+            return render(request, 'login.html', status=400)
+
+        if is_rate_limited(request, 'login', limit=10, window=15 * 60, extra_ident=email):
+            messages.error(request, 'Too many login attempts. Please wait 15 minutes and try again.')
+            return render(request, 'login.html', status=429)
+
         user = authenticate(request, username=email, password=password)
-        
+
         if user is not None:
-            if user.is_active:
-                login(request, user)
-                
-                # Remember Me functionality
-                if remember:
-                    request.session.set_expiry(2592000)  # 30 days
-                else:
-                    request.session.set_expiry(0)  # until browser closes
-                
-                messages.success(request, f'Welcome back, {user.get_full_name_or_email()}!')
-                
-                # Redirect to 'next' if present (validated to prevent open-redirects)
-                next_url = request.POST.get('next') or request.GET.get('next')
-                if next_url and url_has_allowed_host_and_scheme(
-                    url=next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
-                ):
-                    return redirect(next_url)
-                return redirect('home')
+            # authenticate() already refuses inactive users, so this is an active account.
+            login(request, user)
+            reset_rate_limit('login:acct', email)
+
+            # Remember Me functionality
+            if remember:
+                request.session.set_expiry(2592000)  # 30 days
             else:
-                messages.error(request, 'Your account is disabled.')
+                request.session.set_expiry(0)  # until browser closes
+
+            messages.success(request, f'Welcome back, {user.get_full_name_or_email()}!')
+
+            # Redirect to 'next' if present (validated to prevent open-redirects)
+            next_url = request.POST.get('next') or request.GET.get('next')
+            if next_url and url_has_allowed_host_and_scheme(
+                url=next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+            ):
+                return redirect(next_url)
+            return redirect('home')
+
+        inactive = User.objects.filter(email__iexact=email, is_active=False).exists()
+        if inactive:
+            messages.error(request, 'This account is not active yet. Please verify your email or contact support.')
         else:
-            messages.error(request, 'Incorrect password. Please try again.')
-    
+            # Same message for "no such account" and "wrong password" so emails can't be probed.
+            messages.error(request, 'Incorrect email or password. Please try again.')
+
     return render(request, 'login.html')
 
 
 
+RESET_SENT_MESSAGE = 'If an account exists for this email, a 6-digit code has been sent to it. Please check your inbox.'
+
+
 @require_http_methods(["POST"])
 def forgot_password_request(request):
-    """Send OTP via email for password reset"""
-    email = request.POST.get('email', '').strip()
-    
+    """
+    Email a password-reset OTP. The pending reset is bound to this browser session,
+    and the reply is the same whether or not the email has an account.
+    """
+    email = request.POST.get('email', '').strip().lower()[:254]
     if not email:
-        return JsonResponse({'success': False, 'message': 'Email is required'})
-    
-    # Check if user exists
-    try:
-        user = User.objects.get(email=email)
-    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Email is required'}, status=400)
+
+    if is_rate_limited(request, 'pw-reset-request', limit=5, window=60 * 60, extra_ident=email):
         return JsonResponse({
             'success': False,
-            'message': 'No account found with this email address. Please check and try again.'
-        })
-    
-    # Check if SMTP is configured and tested
+            'message': 'Too many reset requests. Please wait an hour and try again.',
+        }, status=429)
+
     smtp_config = SMTPConfiguration.objects.filter(is_active=True).first()
-    
-    if not smtp_config:
+    if not smtp_config or smtp_config.test_status != 'success':
         return JsonResponse({
             'success': False,
-            'message': 'Email service is not configured. Please contact administrator to configure SMTP first.'
+            'message': 'Password reset by email is not available right now. Please contact support.'
         })
-    
-    # Check if SMTP has been tested successfully
-    if smtp_config.test_status != 'success':
-        return JsonResponse({
-            'success': False,
-            'message': 'Email service has not been tested or configured properly. Please contact administrator.'
-        })
-    
-    # Generate OTP
-    def generate_otp(length=6):
-        """Generate a random 6-digit OTP"""
-        return ''.join(secrets.choice(string.digits) for _ in range(length))
-    
-    # Generate and save OTP
-    otp_code = generate_otp()
-    
-    # Delete any existing unused OTPs for this user
-    OTPVerification.objects.filter(
-        user=user,
-        verification_type='password_reset',
-        is_used=False
-    ).delete()
-    
-    # Create new OTP
+
+    user = User.objects.filter(email__iexact=email, is_active=True).first()
+    request.session['reset_pending_user_id'] = user.id if user else None
+    request.session.pop('reset_verified', None)
+    request.session.pop('reset_user_id', None)
+    if not user:
+        return JsonResponse({'success': True, 'message': RESET_SENT_MESSAGE})
+
+    otp_code = ''.join(secrets.choice(string.digits) for _ in range(6))
+    OTPVerification.objects.filter(user=user, verification_type='password_reset', is_used=False).delete()
+    clear_otp_failures(user.id, 'password_reset')
     otp_instance = OTPVerification.objects.create(
         user=user,
         otp_code=otp_code,
         verification_type='password_reset',
         expires_at=timezone.now() + timezone.timedelta(minutes=10)
     )
-    
-    # Prepare email content
-    email_subject = 'Password Reset OTP'
+
     email_message = f"""
 Hello {user.first_name or user.email},
 
-You have requested to reset your password.
+You have requested to reset your Indore Tutorials password.
 
 Your OTP code is: {otp_code}
 
-This OTP is valid for 10 minutes.
+This OTP is valid for 10 minutes. Never share it with anyone.
 
-If you did not request this password reset, please ignore this email or contact support immediately.
+If you did not request this password reset, please ignore this email.
 
 Best regards,
-Support Team
+Indore Tutorials Support
     """.strip()
-    
+
     try:
-        # Create SMTP connection
         connection = get_connection(
             backend=smtp_config.email_backend,
             host=smtp_config.email_host,
@@ -2163,172 +2204,93 @@ Support Team
             use_tls=smtp_config.email_use_tls,
             use_ssl=smtp_config.email_use_ssl,
         )
-        
-        # Send email
-        result = send_mail(
-            subject=email_subject,
+        sent = send_mail(
+            subject='Your Indore Tutorials password reset code',
             message=email_message,
             from_email=smtp_config.default_from_email,
             recipient_list=[user.email],
             fail_silently=False,
             connection=connection
         )
-        
-        if result == 1:
-            return JsonResponse({
-                'success': True,
-                'message': f'OTP has been sent to {email}. Please check your email.',
-                'user_id': user.id
-            })
-        else:
-            # Delete OTP if email fails
-            otp_instance.delete()
-            return JsonResponse({
-                'success': False,
-                'message': 'Failed to send email. Please try again later.'
-            })
-            
-    except Exception as e:
-        # Delete OTP if email fails
+    except Exception:
+        logger.exception("Password reset email failed for user %s", user.id)
+        sent = 0
+
+    if sent != 1:
         otp_instance.delete()
-        return JsonResponse({
-            'success': False,
-            'message': f'Failed to send email: {str(e)}'
-        })
+        return JsonResponse({'success': False, 'message': 'We could not send the email. Please try again later.'})
+    return JsonResponse({'success': True, 'message': RESET_SENT_MESSAGE})
 
 
 @require_http_methods(["POST"])
 def verify_reset_otp(request):
-    """Verify OTP for password reset"""
-    user_id = request.POST.get('user_id')
-    otp_code = request.POST.get('otp_code', '').strip()
-    
-    if not user_id or not otp_code:
-        return JsonResponse({
-            'success': False,
-            'message': 'User ID and OTP code are required.'
-        })
-    
-    try:
-        user = User.objects.get(id=user_id)
-        otp = OTPVerification.objects.filter(
-            user=user,
-            otp_code=otp_code,
-            verification_type='password_reset',
-            is_used=False
-        ).first()
-        
-        if otp and otp.is_valid():
-            # Mark OTP as used
-            otp.is_used = True
-            otp.save()
-            
-            # Store verification in session
-            request.session['reset_user_id'] = user.id
-            request.session['reset_verified'] = True
-            request.session.set_expiry(600)  # Session expires in 10 minutes
-            
-            return JsonResponse({
-                'success': True,
-                'message': 'OTP verified successfully. Please create a new password.'
-            })
-        else:
-            return JsonResponse({
-                'success': False,
-                'message': 'Invalid or expired OTP. Please try again.'
-            })
-            
-    except User.DoesNotExist:
-        return JsonResponse({
-            'success': False,
-            'message': 'User not found.'
-        })
-    except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'message': f'An error occurred: {str(e)}'
-        })
+    """Verify the reset OTP for the account this session asked to reset (5 wrong codes burn it)."""
+    otp_code = (request.POST.get('otp_code') or request.POST.get('otpcode') or '').strip()
+    user_id = request.session.get('reset_pending_user_id')
+
+    if not otp_code:
+        return JsonResponse({'success': False, 'message': 'Please enter the 6-digit code.'}, status=400)
+    if 'reset_pending_user_id' not in request.session:
+        return JsonResponse({'success': False, 'message': 'Session expired. Please request a new code.'})
+    if is_rate_limited(request, 'pw-reset-verify', limit=10, window=15 * 60):
+        return JsonResponse({'success': False, 'message': 'Too many attempts. Please wait 15 minutes.'}, status=429)
+
+    invalid = JsonResponse({'success': False, 'message': 'Invalid or expired code. Please try again.'})
+    if not user_id:
+        return invalid  # no account for that email; answer exactly like a wrong code
+    if otp_locked(user_id, 'password_reset'):
+        return JsonResponse({'success': False, 'message': 'Too many wrong codes. Please request a new code.'})
+
+    otp = OTPVerification.objects.filter(
+        user_id=user_id, otp_code=otp_code, verification_type='password_reset', is_used=False
+    ).first()
+    if not (otp and otp.is_valid()):
+        record_otp_failure(user_id, 'password_reset')
+        return invalid
+
+    otp.is_used = True
+    otp.save(update_fields=['is_used'])
+    clear_otp_failures(user_id, 'password_reset')
+    request.session.cycle_key()
+    request.session['reset_user_id'] = user_id
+    request.session['reset_verified'] = True
+    request.session['reset_verified_at'] = timezone.now().timestamp()
+    request.session.pop('reset_pending_user_id', None)
+    return JsonResponse({'success': True, 'message': 'Code verified. Please create a new password.'})
 
 
 @require_http_methods(["POST"])
 def reset_password(request):
-    """Reset password after OTP verification"""
-    # Check if OTP was verified
-    if not request.session.get('reset_verified'):
-        return JsonResponse({
-            'success': False,
-            'message': 'Please verify OTP first.'
-        })
-    
+    """Set a new password after the OTP was verified in this session (valid for 10 minutes)."""
     user_id = request.session.get('reset_user_id')
-    new_password = request.POST.get('new_password', '').strip()
-    confirm_password = request.POST.get('confirm_password', '').strip()
-    
-    # Validate user_id exists in session
-    if not user_id:
-        return JsonResponse({
-            'success': False,
-            'message': 'Session expired. Please start the password reset process again.'
-        })
-    
-    # Validate passwords
+    verified_at = request.session.get('reset_verified_at', 0)
+    if not request.session.get('reset_verified') or not user_id or timezone.now().timestamp() - verified_at > 600:
+        return JsonResponse({'success': False, 'message': 'Session expired. Please start the password reset again.'})
+
+    new_password = request.POST.get('new_password', '')
+    confirm_password = request.POST.get('confirm_password', '')
     if not new_password or not confirm_password:
-        return JsonResponse({
-            'success': False,
-            'message': 'Please fill in all password fields.'
-        })
-    
+        return JsonResponse({'success': False, 'message': 'Please fill in all password fields.'})
     if new_password != confirm_password:
-        return JsonResponse({
-            'success': False,
-            'message': 'Passwords do not match.'
-        })
-    
-    if len(new_password) < 8:
-        return JsonResponse({
-            'success': False,
-            'message': 'Password must be at least 8 characters long.'
-        })
-    
+        return JsonResponse({'success': False, 'message': 'Passwords do not match.'})
+
+    user = User.objects.filter(id=user_id, is_active=True).first()
+    if not user:
+        return JsonResponse({'success': False, 'message': 'Session expired. Please start the password reset again.'})
     try:
-        # Get user from database
-        user = User.objects.get(id=user_id)
-        
-        # Set new password (this hashes the password)
-        user.set_password(new_password)
-        
-        # Save the user object to database
-        user.save(update_fields=['password'])
-        
-        # Verify password was saved correctly by checking
-        user.refresh_from_db()
-        
-        # Clear session data
-        try:
-            del request.session['reset_user_id']
-            del request.session['reset_verified']
-            request.session.modified = True
-        except KeyError:
-            pass
-        
-        return JsonResponse({
-            'success': True,
-            'message': 'Password reset successfully. You can now login with your new password.'
-        })
-        
-    except User.DoesNotExist:
-        return JsonResponse({
-            'success': False,
-            'message': 'User not found. Please start the password reset process again.'
-        })
-    except Exception as e:
-        import traceback
-        print(f"Error in reset_password: {str(e)}")
-        print(traceback.format_exc())
-        return JsonResponse({
-            'success': False,
-            'message': f'An error occurred while resetting password. Please try again.'
-        })
+        validate_password(new_password, user=user)
+    except ValidationError as exc:
+        return JsonResponse({'success': False, 'message': ' '.join(exc.messages)})
+
+    user.set_password(new_password)
+    user.save(update_fields=['password'])
+    for key in ('reset_user_id', 'reset_verified', 'reset_verified_at'):
+        request.session.pop(key, None)
+    logger.info("Password reset completed for user %s", user.id)
+    return JsonResponse({
+        'success': True,
+        'message': 'Password reset successfully. You can now login with your new password.'
+    })
 
 
 def logout_view(request):
@@ -2355,6 +2317,10 @@ def signup_view(request):
     """
     if request.method == "POST":
         form = SignupForm(request.POST, request.FILES)
+
+        if is_rate_limited(request, 'signup', limit=5, window=60 * 60):
+            messages.error(request, "Too many sign-up attempts from your network. Please try again in an hour.")
+            return render(request, "signup.html", {"form": form, "smtp_configured": has_smtp_configured()}, status=429)
 
         if form.is_valid():
             is_mobile = is_mobile_request(request)
@@ -2400,7 +2366,7 @@ def signup_view(request):
                             user.save()
                             messages.info(
                                 request,
-                                f"Email slow ({message}). Account activated anyway."
+                                "We could not send the verification email, so your account was activated. Please log in."
                             )
                             return redirect("login")
                     
@@ -2421,9 +2387,10 @@ def signup_view(request):
                         return redirect("verify_otp")
                     else:
                         user.delete()
+                        logger.warning("Signup OTP email failed: %s", message)
                         messages.error(
                             request,
-                            f"Failed to send email: {message}. Try login directly."
+                            "We could not send the verification email. Please try signing up again later."
                         )
                         return redirect("login")
 
@@ -2458,7 +2425,10 @@ def verify_otp_view(request):
 
     if request.method == 'POST':
         form = OTPVerificationForm(user=user, data=request.POST)
-        if form.is_valid():
+        if otp_locked(user.id, 'email'):
+            messages.error(request, 'Too many wrong codes. Please request a new OTP.')
+            form = OTPVerificationForm(user=user)
+        elif form.is_valid():
             otp_code = form.cleaned_data['otp_code']
             try:
                 otp = OTPVerification.objects.get(
@@ -2470,6 +2440,7 @@ def verify_otp_view(request):
                 if otp.is_valid():
                     otp.is_used = True
                     otp.save()
+                    clear_otp_failures(user.id, 'email')
 
                     user.is_active = True
                     user.is_verified = True
@@ -2483,7 +2454,8 @@ def verify_otp_view(request):
                 else:
                     messages.error(request, 'OTP has expired. Please request a new one.')
             except OTPVerification.DoesNotExist:
-                messages.error(request, 'Invalid OTP code.')
+                failures = record_otp_failure(user.id, 'email')
+                messages.error(request, 'Invalid OTP code.' if failures < 5 else 'Too many wrong codes. Please request a new OTP.')
     else:
         form = OTPVerificationForm(user=user)
 
@@ -2512,11 +2484,15 @@ def resend_otp_view(request):
                 'message': 'Please wait at least 1 minute before requesting a new OTP.'
             })
 
+        if is_rate_limited(request, 'otp-resend', limit=5, window=60 * 60, extra_ident=user.id):
+            return JsonResponse({'success': False, 'message': 'Too many OTP requests. Please try again later.'}, status=429)
+
         otp, message = create_and_send_otp(user)
         if otp:
+            clear_otp_failures(user.id, 'email')
             return JsonResponse({'success': True, 'message': 'New OTP sent to your email!'})
-        else:
-            return JsonResponse({'success': False, 'message': f'Failed to send OTP: {message}'})
+        logger.warning("Resend OTP failed for user %s: %s", user.id, message)
+        return JsonResponse({'success': False, 'message': 'Could not send the OTP. Please try again later.'})
     except User.DoesNotExist:
         return JsonResponse({'success': False, 'message': 'Invalid user.'})
     except Exception:
@@ -2551,8 +2527,14 @@ def change_password(request):
     new_pw = form.cleaned_data['new_password1']
     user = request.user
 
+    if is_rate_limited(request, 'change-password', limit=10, window=15 * 60, extra_ident=user.pk):
+        return JsonResponse({'success': False, 'message': 'Too many attempts. Please wait 15 minutes.'}, status=429)
     if not user.check_password(old_pw):
         return JsonResponse({'success': False, 'message': 'Current password is incorrect.'}, status=400)
+    try:
+        validate_password(new_pw, user=user)
+    except ValidationError as exc:
+        return JsonResponse({'success': False, 'message': ' '.join(exc.messages)}, status=400)
 
     user.set_password(new_pw)
     user.save()
@@ -2560,12 +2542,13 @@ def change_password(request):
     return JsonResponse({'success': True, 'message': 'Password updated successfully.'})
 
 # Coupons
-@csrf_exempt
 @login_required
 def apply_coupon(request):
     """Apply and save a coupon for the authenticated user."""
     if request.method != 'POST':
         return JsonResponse({'success': False, 'message': 'Invalid request method'})
+    if is_rate_limited(request, 'coupon', limit=15, window=15 * 60, extra_ident=request.user.pk):
+        return JsonResponse({'success': False, 'message': 'Too many coupon attempts. Please wait a few minutes.'}, status=429)
 
     try:
         data = json.loads(request.body)
@@ -2638,148 +2621,31 @@ def my_coupons(request):
     except Exception:
         return JsonResponse({'success': False, 'message': 'Error loading coupons'})
 
-# base/views.py or create search/views.py
+@require_GET
 def search_suggestions(request):
     """
-    AJAX endpoint for live search suggestions
-    Returns matching courses from all types including categories and bundles
+    AJAX endpoint for live search suggestions across categories, test series, courses,
+    e-books and bundles. Typo-tolerant; see base/search.py.
     """
-    query = request.GET.get('q', '').strip()
-    
+    query = request.GET.get('q', '').strip()[:100]
     if len(query) < 2:
-        return JsonResponse({'suggestions': []})
-    
-    suggestions = []
-    
-    # Search Categories
-    categories = Category.objects.filter(
-        Q(name__icontains=query) | Q(description__icontains=query)
-    )[:3]
-    
-    for category in categories:
-        suggestions.append({
-            'type': 'Category',
-            'name': category.name,
-            'url': f'/category/{category.slug}/',
-            'price': '',
-            'thumbnail': None,
-            'category': 'Exam Category',
-            'description': category.description[:100] if category.description else ''
-        })
-    
-    # Search Video Courses
-    video_courses = VideoCourse.objects.filter(
-        Q(name__icontains=query) | Q(description__icontains=query)
-    ).select_related("category")[:3]
-    
-    for course in video_courses:
-        suggestions.append({
-            'type': 'Video Course',
-            'name': course.name,
-            'url': f'/course/{course.pk}/',
-            'price': f'₹{course.selling_price}',
-            'thumbnail': course.thumbnail.url if course.thumbnail else None,
-            'category': course.category.name if course.category else 'General'
-        })
-    
-    # Search Live Class Courses
-    live_courses = LiveClassCourse.objects.filter(
-        Q(name__icontains=query) | Q(about__icontains=query),
-        is_active=True
-    ).select_related("category")[:3]
-    
-    for course in live_courses:
-        suggestions.append({
-            'type': 'Live Class',
-            'name': course.name,
-            'url': f'/live-class/{course.pk}/',
-            'price': f'₹{course.current_price}',
-            'thumbnail': course.banner_image_desktop.url if course.banner_image_desktop else None,
-            'category': course.category_name
-        })
-    
-    # Search Test Series
-    test_series = TestSeries.objects.filter(
-        Q(title__icontains=query) | Q(description__icontains=query),
-        is_active=True
-    )[:3]
-    
-    for series in test_series:
-        suggestions.append({
-            'type': 'Test Series',
-            'name': series.title,
-            'url': f'/exam-series/{series.pk}/',
-            'price': f'₹{series.price}' if not series.is_free else 'Free',
-            'thumbnail': series.thumbnail.url if series.thumbnail else None,
-            'category': 'Test Series'
-        })
-    
-    # Search E-Library Courses
-    elibrary_courses = ELibraryCourse.objects.filter(
-        Q(title__icontains=query) | Q(description__icontains=query),
-        is_active=True
-    ).select_related("category")[:3]
+        return JsonResponse({'suggestions': [], 'corrected': None, 'popular': POPULAR_SEARCHES})
 
-    for course in elibrary_courses:
-        suggestions.append({
-            'type': 'E-Library',
-            'name': course.title,
-            'url': f'/ebook/{course.pk}/',  # Changed from /elibrary/course/{course.pk}/
-            'price': f'₹{course.current_price}',
-            'thumbnail': course.cover_image.url if course.cover_image else None,
-            'category': course.category.name if course.category else 'General'
-        })
-        
-    # Search Product Bundles
-    bundles = ProductBundle.objects.filter(
-        Q(title__icontains=query) | 
-        Q(description__icontains=query) |
-        Q(short_description__icontains=query),
-        status='active'
-    ).prefetch_related(
-        "video_courses", "live_classes", "test_series", "elibrary_courses"
-    )[:3]
-    
-    for bundle in bundles:
-        # Calculate total courses in bundle
-        total_courses = (
-            bundle.video_courses.count() +
-            bundle.live_classes.count() +
-            bundle.test_series.count() +
-            bundle.elibrary_courses.count()
-        )
-        
-        # Calculate discount percentage
-        discount_percent = 0
-        if bundle.original_price > 0:
-            discount_percent = ((bundle.original_price - bundle.bundle_price) / bundle.original_price) * 100
-        
-        suggestions.append({
-            'type': 'Bundle',
-            'name': bundle.title,
-            'url': f'/bundle/{bundle.slug}/',
-            'price': f'₹{bundle.bundle_price}',
-            'thumbnail': bundle.thumbnail.url if bundle.thumbnail else None,
-            'category': f'{total_courses} Courses • {discount_percent:.0f}% OFF',
-            'original_price': f'₹{bundle.original_price}'
-        })
-    
-    return JsonResponse({'suggestions': suggestions[:15]})
+    found = site_search(query, limit=8)
+    suggestions = [
+        {key: item.get(key) for key in ('type', 'name', 'url', 'price', 'thumbnail', 'category')}
+        for item in found['results']
+    ]
+    return JsonResponse({
+        'suggestions': suggestions,
+        'corrected': found['corrected'],
+        'popular': POPULAR_SEARCHES if not suggestions else [],
+    })
 
 
 SEARCH_RESULT_LIMIT = 60
 POPULAR_SEARCHES = ['JEE Main', 'NEET UG', 'SSC CGL', 'CBSE Class 10', 'UPSC', 'Banking', 'Olympiad', 'Class 12 Science']
 
-
-def _match_all_words(words, fields):
-    """Q requiring every word to appear in at least one of the fields (so 'bihar class 10' finds 'Bihar Board … Class 10')."""
-    condition = Q()
-    for word in words:
-        any_field = Q()
-        for field in fields:
-            any_field |= Q(**{f'{field}__icontains': word})
-        condition &= any_field
-    return condition
 
 
 def search_results(request):
@@ -2787,7 +2653,6 @@ def search_results(request):
     Full search results page
     """
     query = request.GET.get('q', '').strip()
-    words = query.split()[:8]
     
     context = {
         'query': query,
@@ -2802,60 +2667,37 @@ def search_results(request):
     }
     
     if query:
-        # Categories
-        categories = Category.objects.filter(_match_all_words(words, ['name', 'description'])).distinct()
-        
-        # Video Courses
-        video_courses = VideoCourse.objects.filter(
-            _match_all_words(words, ['name', 'description', 'category__name'])
-        ).select_related('category').distinct()
-        
-        # Live Classes
-        live_courses = LiveClassCourse.objects.filter(
-            _match_all_words(words, ['name', 'about', 'category__name']),
-            is_active=True
-        ).select_related('category').distinct()
-        
-        # Test Series
-        # Title matches first, then the rest; the full list lives in the filterable catalogue.
-        test_series_qs = TestSeries.objects.filter(
-            _match_all_words(words, ['title', 'description', 'exam']), is_active=True
+        found = site_search(query)
+        context['corrected'] = found['corrected']
+        ids = {}
+        for item in found['results']:
+            ids.setdefault(item['type'], []).append(item['pk'])
+
+        def in_rank_order(queryset, kind, limit=None):
+            wanted = ids.get(kind, [])[:limit]
+            rows = queryset.in_bulk(wanted)
+            return [rows[pk] for pk in wanted if pk in rows]
+
+        categories = in_rank_order(Category.objects.all(), 'Category')
+        video_courses = in_rank_order(VideoCourse.objects.select_related('category'), 'Video Course')
+        live_courses = in_rank_order(LiveClassCourse.objects.select_related('category'), 'Live Class')
+        elibrary_courses = in_rank_order(ELibraryCourse.objects.select_related('category'), 'E-Library')
+
+        series_ids = ids.get('Test Series', [])
+        test_series_total = len(series_ids)
+        position = {pk: i for i, pk in enumerate(series_ids)}
+        test_series = sorted(
+            _series_cards(TestSeries.objects.filter(pk__in=series_ids[:SEARCH_RESULT_LIMIT]), request.user),
+            key=lambda series: position[series.pk],
         )
-        test_series_total = test_series_qs.count()
-        title_hits = test_series_qs.filter(_match_all_words(words, ['title']))
-        test_series = (
-            _series_cards(title_hits.order_by('grade', 'stream', 'title')[:SEARCH_RESULT_LIMIT], request.user)
+
+        product_bundles = in_rank_order(
+            ProductBundle.objects.select_related('category').prefetch_related(
+                'video_courses', 'live_classes', 'test_series', 'elibrary_courses'
+            ),
+            'Bundle',
         )
-        if len(test_series) < SEARCH_RESULT_LIMIT:
-            test_series += _series_cards(
-                test_series_qs.exclude(pk__in=title_hits.values('pk')).order_by('title')[:SEARCH_RESULT_LIMIT - len(test_series)],
-                request.user,
-            )
-        
-        # E-Library
-        elibrary_courses = ELibraryCourse.objects.filter(
-            _match_all_words(words, ['title', 'description', 'short_description', 'category__name']),
-            is_active=True
-        ).select_related('category').distinct()
-        
-        # Product Bundles
-        product_bundles = ProductBundle.objects.filter(
-            Q(title__icontains=query) |
-            Q(description__icontains=query) |
-            Q(short_description__icontains=query) |
-            Q(category__name__icontains=query) |
-            Q(video_courses__name__icontains=query) |
-            Q(live_classes__name__icontains=query) |
-            Q(test_series__title__icontains=query) |
-            Q(elibrary_courses__title__icontains=query),
-            status='active'
-        ).select_related('category').prefetch_related(
-            'video_courses',
-            'live_classes', 
-            'test_series',
-            'elibrary_courses'
-        ).distinct()
-        
+
         # Add calculated fields to bundles
         bundle_list = []
         for bundle in product_bundles:
@@ -2874,11 +2716,6 @@ def search_results(request):
             bundle.discount_percent = discount_percent
             bundle_list.append(bundle)
         
-        categories = list(categories)
-        video_courses = list(video_courses)
-        live_courses = list(live_courses)
-        elibrary_courses = list(elibrary_courses)
-
         context['categories'] = categories
         context['video_courses'] = video_courses
         context['live_courses'] = live_courses
@@ -2931,7 +2768,7 @@ def all_test_series(request):
 
     series_qs = TestSeries.objects.filter(is_active=True)
     if query:
-        series_qs = series_qs.filter(Q(title__icontains=query) | Q(description__icontains=query))
+        series_qs = series_qs.filter(pk__in=ranked_ids(query, 'Test Series'))
     if exam:
         series_qs = series_qs.filter(exam=exam)
     if board in dict(TestSeries.BOARD_CHOICES):
@@ -2942,8 +2779,8 @@ def all_test_series(request):
         series_qs = series_qs.filter(stream=stream)
     if subject:
         series_qs = series_qs.filter(
-            tests__is_active=True, tests__questions__subject__code=subject
-        ).distinct()
+            pk__in=Question.objects.filter(test__is_active=True, subject__code=subject).values('test__test_series')
+        )
     if difficulty in dict(TestSeries.DIFFICULTY_CHOICES):
         series_qs = series_qs.filter(difficulty=difficulty)
     if price == 'free':
@@ -2955,12 +2792,10 @@ def all_test_series(request):
             pk__in=Test.objects.filter(is_active=True, is_demo=False, paper_type=paper).values('test_series')
         )
 
-    series_qs = series_qs.annotate(
-        active_test_count=Count('tests', filter=Q(tests__is_active=True, tests__is_demo=False), distinct=True),
-        active_question_count=Count('tests__questions', filter=Q(tests__is_active=True, tests__is_demo=False), distinct=True),
-    ).order_by(*TEST_SERIES_SORTS[sort][1])
+    series_qs = series_qs.order_by(*TEST_SERIES_SORTS[sort][1])
 
     page_obj = Paginator(series_qs, 12).get_page(params.get('page'))
+    page_obj.object_list = apply_counts(list(page_obj.object_list))
 
     purchased_ids = set()
     if request.user.is_authenticated:
@@ -3015,9 +2850,7 @@ def all_test_series(request):
         ),
         'grade_options': sorted(set(active_series.exclude(grade__isnull=True).values_list('grade', flat=True))),
         'stream_options': TestSeries.STREAM_CHOICES,
-        'subject_options': Subject.objects.filter(
-            question__test__is_active=True, question__test__test_series__is_active=True
-        ).distinct().order_by('name'),
+        'subject_options': subject_options(),
         'difficulty_options': TestSeries.DIFFICULTY_CHOICES,
         'sort_options': [(key, label) for key, (label, _) in TEST_SERIES_SORTS.items()],
         'active_filters': active_filters,
@@ -3245,17 +3078,22 @@ def _serve_elibrary_pdf(request, pdf, *, as_attachment):
 
 @login_required
 def my_elibrary(request):
-    """Display user's enrolled e-library courses"""
-    
-    enrollments = ELibraryEnrollment.objects.filter(
-        user=request.user,
-        payment_status='completed'
-    ).select_related('course').order_by('-enrolled_at')
-    
-    context = {
-        'enrollments': enrollments,
-    }
-    return render(request, 'elibrary/my_library.html', context)
+    """E-books the user can open: direct enrollments plus active purchases (including via bundles)."""
+    now = timezone.now()
+    access_ids = set(
+        UserCourseAccess.objects.filter(user=request.user, course_type='elibrary', is_active=True)
+        .filter(Q(expires_at__isnull=True) | Q(expires_at__gt=now))
+        .values_list('course_id', flat=True)
+    )
+    enrolled_ids = set(
+        ELibraryEnrollment.objects.filter(user=request.user, payment_status='completed').values_list('course_id', flat=True)
+    )
+    courses = (
+        ELibraryCourse.objects.filter(pk__in=access_ids | enrolled_ids, is_active=True)
+        .select_related('category')
+        .order_by('title')
+    )
+    return render(request, 'elibrary/my_library.html', {'courses': courses})
 
 
 def elibrary_category(request, category_slug):
@@ -3789,3 +3627,32 @@ def tutor_chat(request):
         logger.error("Tutor API error %s: %s", response.status_code, data.get('error'))
         return JsonResponse({'error': 'Tutor could not answer that. Please try again.'}, status=502)
     return JsonResponse({'reply': reply})
+
+
+# ===== ERROR PAGES =====
+# Self-contained templates (no navbar/DB tags) so they still render when the database is the problem.
+
+ERROR_PAGES = {
+    403: ('Access denied', "You don't have permission to open this page. If you bought this course, make sure you're logged in with the same account."),
+    404: ('Page not found', "We couldn't find that page. It may have been moved, or the link may be mistyped."),
+    429: ('Too many requests', "You're going a little fast. Please wait a few minutes and try again."),
+    500: ('Something went wrong', "An unexpected error occurred on our side. Our team has been notified — please try again shortly."),
+}
+
+
+def _error_page(request, status):
+    title, message = ERROR_PAGES[status]
+    html = loader.render_to_string('errors/error.html', {'status': status, 'title': title, 'message': message})
+    return HttpResponse(html, status=status)
+
+
+def error_403(request, exception=None):
+    return _error_page(request, 403)
+
+
+def error_404(request, exception=None):
+    return _error_page(request, 404)
+
+
+def error_500(request):
+    return _error_page(request, 500)

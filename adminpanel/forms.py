@@ -700,6 +700,20 @@ class AdminCreateUserForm(forms.ModelForm):
             'profile_image': forms.ClearableFileInput(attrs={'accept': 'image/*'}),
         }
 
+    def __init__(self, *args, actor=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Only superusers may hand out staff or superuser rights.
+        if not (actor and actor.is_superuser):
+            self.fields.pop('is_superuser', None)
+            self.fields.pop('is_staff', None)
+
+    def clean_password(self):
+        from django.contrib.auth.password_validation import validate_password
+        password = self.cleaned_data.get('password')
+        if password:
+            validate_password(password)
+        return password
+
     def clean(self):
         cleaned = super().clean()
         pwd = cleaned.get('password')

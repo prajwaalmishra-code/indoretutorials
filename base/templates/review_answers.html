@@ -1,4 +1,4 @@
-{% load static %}
+{% load static %}{% load question_tags %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -78,6 +78,7 @@
         .wrong { background: #ffebee; color: #c62828; }
         .skipped { background: #f3e5f5; color: #7b1fa2; }
 
+        .question-text .q-code { margin: 10px 0; padding: 12px 14px; border-radius: 8px; background: #0f172a; color: #e2e8f0; font: 13.5px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-weight: 400; white-space: pre; overflow-x: auto; }
         .question-text {
             font-weight: 600;
             margin-bottom: 15px;
@@ -185,7 +186,7 @@
                 {% endif %}
             </div>
             <div>
-                <p class="question-text">{{ item.question.question_text|safe }}</p>
+                <div class="question-text">{{ item.question.question_text|question_html }}</div>
                 <div class="answer correct">
                     <strong>Correct Answer:</strong> {{ item.correct_answer_display }}
                 </div>
