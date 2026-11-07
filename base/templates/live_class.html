@@ -92,7 +92,7 @@
                   {% endif %}
                 </a>
               {% elif user.is_authenticated %}
-                <a href="{% url 'login' %}" class="lc-btn lc-btn-enroll">
+                <a href="{{ login_url }}" class="lc-btn lc-btn-enroll">
                   <i class="fa fa-sign-in-alt"></i> Login to Enroll
                 </a>
               {% endif %}

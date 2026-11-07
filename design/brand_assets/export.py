@@ -37,7 +37,7 @@ def png(im, dest, size=None):
 def main():
     BRAND.mkdir(parents=True, exist_ok=True)
 
-    for i in (1, 2, 3, 4):
+    for i in range(1, 8):
         webp(f"banner_{i}_desktop", BRAND / f"banner-{i}-desktop.webp")
         webp(f"banner_{i}_mobile", BRAND / f"banner-{i}-mobile.webp")
     for page in ("login", "signup"):

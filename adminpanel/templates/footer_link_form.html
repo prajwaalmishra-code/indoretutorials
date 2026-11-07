@@ -8,8 +8,8 @@
 {% block content %}
 <div class="ad-main-content">
     <div class="ad-page-header">
-        <h1>{{ action }} {% if type == 'footer_link' %}🔗 Footer Link{% else %}⚖️ Footer Legal Link{% endif %}</h1>
-        <a href="{% url 'footer_edit' %}" class="ad-btn ad-btn-secondary">← Back to Footer Management</a>
+        <h1>{{ action }} {% if type == 'footer_link' %}Footer Link{% else %}Footer Legal Link{% endif %}</h1>
+        <a href="{% url 'footer_edit' %}" class="ad-btn ad-btn-secondary"><i class="fas fa-arrow-left"></i>Back to Footer Management</a>
     </div>
 
     <div class="ad-form-container">
@@ -81,7 +81,7 @@
         <!-- Preview Section -->
         <div class="ad-card">
             <div class="ad-card-header">
-                <h3>🔍 Preview</h3>
+                <h3><i class="fas fa-magnifying-glass"></i>Preview</h3>
             </div>
             <div class="ad-card-body">
                 <div class="link-preview">

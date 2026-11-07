@@ -18,11 +18,15 @@ from adminpanel.models import (
 BRAND_DIR = Path(settings.BASE_DIR) / "base" / "static" / "img" / "brand"
 BRAND_COLOR = "#FCBC00"
 
+# (title, alt text, display order, artwork number -> banner-<n>-desktop/mobile.webp)
 BANNERS = [
-    ("Learn Smarter, Score Higher", "Indore Tutorials - live classes, video courses and test series", 1),
-    ("Boost Your Score with Smart Tests", "Indore Tutorials - mock tests, PYQs and all-India rank", 2),
-    ("Knowledge That Costs Nothing", "Indore Tutorials - knowledge that costs nothing, empowers everything", 3),
-    ("Learn Anytime, Anywhere", "Indore Tutorials - video lectures, notes and e-books", 4),
+    ("Free Test Series for 3 Months", "Indore Tutorials - free test series for 3 months, all mock tests unlocked", 1, 5),
+    ("Learn Smarter, Score Higher", "Indore Tutorials - live classes, video courses and test series", 2, 1),
+    ("Ace Your Board Exams", "Indore Tutorials - chapter-wise tests and board mocks for CBSE, ICSE, UP Board, NIOS and state boards", 3, 6),
+    ("Boost Your Score with Smart Tests", "Indore Tutorials - mock tests, PYQs and all-India rank", 4, 2),
+    ("Crack Your Dream Exam", "Indore Tutorials - full mocks, PYQ papers and topic tests for 100+ competitive exams", 5, 7),
+    ("Knowledge That Costs Nothing", "Indore Tutorials - knowledge that costs nothing, empowers everything", 6, 3),
+    ("Learn Anytime, Anywhere", "Indore Tutorials - video lectures, notes and e-books", 7, 4),
 ]
 
 
@@ -90,7 +94,7 @@ class Command(BaseCommand):
         auth.save()
 
         brand_ids = []
-        for i, (title, alt, order) in enumerate(BANNERS, start=1):
+        for title, alt, order, i in BANNERS:
             banner = Banner.objects.filter(title=title).first() or Banner(title=title)
             banner.alt_text = alt
             banner.order = order

@@ -7,7 +7,7 @@
 <div class="ad-main-content">
     <div class="ad-page-header">
         <h1>{{ action }} About Us Section</h1>
-        <a href="{% url 'about_us_edit' %}" class="ad-btn ad-btn-secondary">← Back to About Us Management</a>
+        <a href="{% url 'about_us_edit' %}" class="ad-btn ad-btn-secondary"><i class="fas fa-arrow-left"></i>Back to About Us Management</a>
     </div>
 
     <div class="ad-card">
@@ -19,7 +19,7 @@
                 {% csrf_token %}
                 
                 <div class="form-section">
-                    <h3>🏢 Basic Information</h3>
+                    <h3><i class="fas fa-building"></i>Basic Information</h3>
                     <div class="form-row">
                         <div class="form-group">
                             <label for="{{ form.heading.id_for_label }}">Page Heading:</label>
@@ -60,7 +60,7 @@
                 </div>
 
                 <div class="form-section">
-                    <h3>📞 Contact Information</h3>
+                    <h3><i class="fas fa-phone"></i>Contact Information</h3>
                     <div class="form-group">
                         <label for="{{ form.address.id_for_label }}">Address:</label>
                         {{ form.address }}
@@ -96,7 +96,7 @@
                 </div>
 
                 <div class="form-section">
-                    <h3>📱 Social Media Links</h3>
+                    <h3><i class="fas fa-mobile-screen"></i>Social Media Links</h3>
                     <div class="form-row">
                         <div class="form-group">
                             <label for="{{ form.facebook_url.id_for_label }}">Facebook URL:</label>
@@ -126,7 +126,7 @@
                 </div>
 
                 <div class="form-section">
-                    <h3>🗺️ Map Settings</h3>
+                    <h3><i class="fas fa-map-location-dot"></i>Map Settings</h3>
                     <div class="form-group">
                         <label for="{{ form.map_embed_url.id_for_label }}">Google Maps Embed URL:</label>
                         {{ form.map_embed_url }}

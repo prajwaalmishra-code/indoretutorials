@@ -9,10 +9,53 @@ def render_banner_slider():
     return {'banners': banners}
 
 
+def _test_series_stats():
+    """Live test-series numbers for the home page, cached for 10 minutes."""
+    from django.core.cache import cache
+    from django.urls import reverse
+    from testseries.models import Question, Test, TestSeries
+
+    stats = cache.get('home-test-series-stats')
+    if stats is None:
+        series = TestSeries.objects.filter(is_active=True)
+        tests = Test.objects.filter(is_active=True, test_series__is_active=True, is_demo=False)
+        exams = set(series.exclude(exam='').values_list('exam', flat=True).distinct())
+        boards = set(series.exclude(board='').values_list('board', flat=True).distinct())
+        stats = {
+            'series': series.count(),
+            'tests': tests.count(),
+            'questions': Question.objects.filter(test__in=tests).count(),
+            'exams': len(exams) + len(boards),
+        }
+        cache.set('home-test-series-stats', stats, 600)
+
+    url = reverse('all_test_series')
+    return [
+        {'value': stats['series'], 'label': 'Test Series', 'icon': 'layer-group', 'color': '37, 99, 235', 'url': url},
+        {'value': stats['tests'], 'label': 'Mock & Practice Tests', 'icon': 'file-pen', 'color': '234, 88, 12', 'url': url},
+        {'value': stats['questions'], 'label': 'Questions with Solutions', 'icon': 'circle-question', 'color': '22, 163, 74', 'url': url},
+        {'value': stats['exams'], 'label': 'Exams & Boards', 'icon': 'graduation-cap', 'color': '124, 58, 237', 'url': url},
+    ]
+
+
+def _indian_number(value):
+    """12345678 -> '1,23,45,678' (Indian digit grouping, matching the counter animation)."""
+    digits = str(int(value))
+    if len(digits) <= 3:
+        return digits
+    head, tail = digits[:-3], digits[-3:]
+    groups = []
+    while len(head) > 2:
+        groups.insert(0, head[-2:])
+        head = head[:-2]
+    return ','.join(([head] if head else []) + groups) + ',' + tail
+
+
 @register.inclusion_tag('components/stats_section.html')
 def render_stats_section():
-    stat_cards = StatCard.objects.filter(is_active=True).order_by('order')
-    return {'stat_cards': stat_cards}
+    from django.urls import reverse
+    stats = [dict(s, display=_indian_number(s['value'])) for s in _test_series_stats() if s['value']]
+    return {'test_stats': stats, 'test_series_url': reverse('all_test_series')}
 
 @register.inclusion_tag('components/cta_section.html')
 def render_cta_section():

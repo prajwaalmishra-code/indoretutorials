@@ -250,6 +250,236 @@ ASSETS.banner_4_mobile = {
     sparkle(720, 160, 10, '#fff'),
 };
 
+/* ---------- banners 5-7: colourful campaign banners (same layout, brand gold + ink accents) ---------- */
+
+const HUES = {
+  violet: { a: '#8B5CF6', b: '#5B2EE0', c: '#2A1078', glow: '#C4B5FD' },
+  teal:   { a: '#14B8A6', b: '#0F766E', c: '#0B3F3B', glow: '#5EEAD4' },
+  blue:   { a: '#3B82F6', b: '#1D4ED8', c: '#0F1E5C', glow: '#93C5FD' },
+};
+const CONFETTI = ['#FCBC00', '#FF6B8A', '#4ADE80', '#FFFFFF', '#38BDF8', '#FB923C'];
+
+// Seeded scatter so every render is identical.
+function seeded(seed) {
+  let s = seed;
+  return () => ((s = (s * 9301 + 49297) % 233280) / 233280);
+}
+
+function confetti(x0, y0, x1, y1, n, seed = 7, size = 1) {
+  const r = seeded(seed);
+  let out = '';
+  for (let i = 0; i < n; i++) {
+    const x = x0 + r() * (x1 - x0), y = y0 + r() * (y1 - y0), c = CONFETTI[i % CONFETTI.length], k = r(), rot = Math.round(r() * 180);
+    out += k < 0.45
+      ? `<rect x="${x}" y="${y}" width="${10 * size}" height="${5 * size}" rx="${1.5 * size}" fill="${c}" transform="rotate(${rot} ${x} ${y})" opacity=".9"/>`
+      : k < 0.8 ? `<circle cx="${x}" cy="${y}" r="${3.4 * size}" fill="${c}" opacity=".9"/>`
+        : `<path d="M${x} ${y} q${5 * size} ${-6 * size} ${10 * size} 0 t${10 * size} 0" stroke="${c}" stroke-width="${2.6 * size}" fill="none" stroke-linecap="round" transform="rotate(${rot} ${x} ${y})"/>`;
+  }
+  return out;
+}
+
+function bannerBgHue(hue, w, h) {
+  const p = HUES[hue], id = `bgHue${hue}${w}`;
+  const wide = w > h * 3;
+  return `<defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="${p.a}"/><stop offset=".5" stop-color="${p.b}"/><stop offset="1" stop-color="${p.c}"/></linearGradient>
+      <radialGradient id="${id}g" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="${p.glow}" stop-opacity=".6"/><stop offset="1" stop-color="${p.glow}" stop-opacity="0"/></radialGradient></defs>
+    <rect width="${w}" height="${h}" fill="url(#${id})"/>
+    <rect width="${w}" height="${h}" fill="url(#pDotsW)" opacity=".55"/>
+    <circle cx="${wide ? 1200 : 570}" cy="${wide ? 170 : 250}" r="${wide ? 320 : 240}" fill="url(#${id}g)"/>` +
+    (wide
+      ? `<path d="M0 0 H210 C150 90 170 210 90 300 H0 Z" fill="${C.gold}"/>
+         <path d="M0 0 H150 C100 80 110 200 40 300 H0 Z" fill="${C.ink}"/>
+         ${rings(250, 30, 120, 3, '#fff', 0.25, 3)}
+         <path d="M1920 300 H1700 C1760 240 1780 140 1860 90 C1890 70 1910 60 1920 58 Z" fill="${C.ink}"/>
+         <path d="M1920 300 H1790 C1830 250 1850 180 1920 150 Z" fill="${C.gold}"/>`
+      : `${rings(700, 60, 120, 3, '#fff', 0.3, 3)}<path d="M0 400 V330 C40 350 60 380 120 400 Z" fill="${C.gold}"/>`);
+}
+
+const SUB_ON_HUE = 'rgba(255,255,255,.86)';
+
+// Coupon ticket with notches: big stub figure on the left, offer on the right.
+function ticket(x, y, w, h, rot, stubBig, stubSmall, main, mainSub) {
+  const id = uid('tk'), stub = w * 0.34, r = h * 0.13;
+  return `<g transform="rotate(${rot} ${x + w / 2} ${y + h / 2})" filter="url(#fShadow)">
+    <defs><mask id="${id}" maskUnits="userSpaceOnUse" x="${x - 5}" y="${y - 5}" width="${w + 10}" height="${h + 10}">
+      <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${h * 0.12}" fill="#fff"/>
+      <circle cx="${x + stub}" cy="${y}" r="${r}" fill="#000"/><circle cx="${x + stub}" cy="${y + h}" r="${r}" fill="#000"/>
+      <circle cx="${x}" cy="${y + h / 2}" r="${r * 0.8}" fill="#000"/><circle cx="${x + w}" cy="${y + h / 2}" r="${r * 0.8}" fill="#000"/></mask></defs>
+    <g mask="url(#${id})">
+      <rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#gGold)"/>
+      <rect x="${x}" y="${y}" width="${stub}" height="${h}" fill="${C.ink}"/>
+      <rect x="${x + stub}" y="${y}" width="${w - stub}" height="${h}" fill="url(#pDotsInk)" opacity=".35"/>
+    </g>
+    <path d="M${x + stub} ${y + r + 6} V${y + h - r - 6}" stroke="${C.ink}" stroke-width="3" stroke-dasharray="8 7" opacity=".55"/>
+    ${T(x + stub / 2, y + h * 0.6, h * 0.52, stubBig, { anchor: 'middle', color: C.gold })}
+    ${T(x + stub / 2, y + h * 0.8, h * 0.11, stubSmall, { anchor: 'middle', color: '#fff', ls: h * 0.012 })}
+    ${T(x + stub + (w - stub) / 2, y + h * 0.56, h * 0.36, main, { anchor: 'middle', color: C.ink })}
+    ${T(x + stub + (w - stub) / 2, y + h * 0.76, h * 0.1, mainSub, { anchor: 'middle', color: C.ink, weight: 700, ls: h * 0.01 })}
+  </g>`;
+}
+
+function giftBox(x, bottom, w, color = '#FF6B8A') {
+  const h = w * 0.78, lid = w * 0.24, y = bottom - h;
+  return `<g filter="url(#fShadowS)">
+    <rect x="${x + w * 0.06}" y="${y + lid}" width="${w * 0.88}" height="${h - lid}" rx="${w * 0.05}" fill="${color}"/>
+    <rect x="${x}" y="${y}" width="${w}" height="${lid}" rx="${w * 0.05}" fill="${color}"/>
+    <rect x="${x}" y="${y + lid * 0.72}" width="${w}" height="${lid * 0.28}" fill="rgba(0,0,0,.12)"/>
+    <rect x="${x + w * 0.43}" y="${y}" width="${w * 0.14}" height="${h}" fill="${C.gold}"/>
+    <path d="M${x + w / 2} ${y} C${x + w * 0.2} ${y - w * 0.32} ${x + w * 0.06} ${y - w * 0.02} ${x + w / 2} ${y}
+             C${x + w * 0.8} ${y - w * 0.32} ${x + w * 0.94} ${y - w * 0.02} ${x + w / 2} ${y} Z" fill="${C.gold}" stroke="${C.goldD}" stroke-width="2"/>
+  </g>`;
+}
+
+// White sticker chip with a coloured dot (board / exam names).
+function tagChip(x, y, h, text, color, rot = 0, solid = false) {
+  const fs = h * 0.44, w = textW(text, fs, SANS, 800) + h * 1.15;
+  return `<g transform="rotate(${rot} ${x + w / 2} ${y + h / 2})" filter="url(#fShadowS)">
+    <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${h / 2}" fill="${solid ? color : '#fff'}"/>
+    <circle cx="${x + h * 0.48}" cy="${y + h / 2}" r="${h * 0.17}" fill="${solid ? '#fff' : color}"/>
+    <text x="${x + h * 0.8}" y="${y + h * 0.65}" font-family="${SANS}" font-weight="800" font-size="${fs}" fill="${solid ? '#fff' : C.ink}">${text}</text></g>`;
+}
+
+function reportCard(x, y, w, rot, accent) {
+  const h = w * 1.05, rows = [['Maths', 'A+', 0.96, '#3B82F6'], ['Science', 'A+', 0.92, '#22C55E'], ['English', 'A', 0.86, '#F97316'], ['SST', 'A+', 0.9, '#EC4899']];
+  return `<g transform="rotate(${rot} ${x + w / 2} ${y + h / 2})" filter="url(#fShadow)">
+    <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${w * 0.08}" fill="#FFFCF5"/>
+    <rect x="${x}" y="${y}" width="${w}" height="${h * 0.2}" rx="${w * 0.08}" fill="${accent}"/><rect x="${x}" y="${y + h * 0.12}" width="${w}" height="${h * 0.08}" fill="${accent}"/>
+    ${T(x + w * 0.08, y + h * 0.135, w * 0.085, 'REPORT CARD', { color: '#fff', ls: 1 })}
+    ${rows.map(([s, g, v, c], i) => {
+      const ry = y + h * (0.32 + i * 0.165);
+      return `${T(x + w * 0.08, ry, w * 0.07, s, { weight: 700, color: C.ink2 })}
+        <rect x="${x + w * 0.08}" y="${ry + w * 0.03}" width="${w * 0.62}" height="${w * 0.035}" rx="${w * 0.018}" fill="#EFE6D2"/>
+        <rect x="${x + w * 0.08}" y="${ry + w * 0.03}" width="${w * 0.62 * v}" height="${w * 0.035}" rx="${w * 0.018}" fill="${c}"/>
+        ${T(x + w * 0.9, ry + w * 0.06, w * 0.1, g, { anchor: 'end', color: c })}`;
+    }).join('')}
+  </g>`;
+}
+
+// Bullseye with an arrow in the centre.
+function target(cx, cy, r) {
+  return `<g filter="url(#fShadow)">
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="#fff"/><circle cx="${cx}" cy="${cy}" r="${r * 0.76}" fill="#FF6B8A"/>
+    <circle cx="${cx}" cy="${cy}" r="${r * 0.54}" fill="#fff"/><circle cx="${cx}" cy="${cy}" r="${r * 0.32}" fill="${C.gold}"/>
+    <circle cx="${cx}" cy="${cy}" r="${r * 0.12}" fill="${C.ink}"/></g>
+    <path d="M${cx} ${cy} L${cx + r * 1.1} ${cy - r * 1.1}" stroke="${C.ink}" stroke-width="${r * 0.08}" stroke-linecap="round"/>
+    <path d="M${cx + r * 1.1} ${cy - r * 1.1} l${r * 0.06} ${-r * 0.3} l${r * 0.2} ${r * 0.1} Z M${cx + r * 1.1} ${cy - r * 1.1} l${r * 0.3} ${-r * 0.06} l${-r * 0.1} ${r * 0.2} Z" fill="${C.gold}"/>`;
+}
+
+// Banner 5: free test series offer (violet).
+ASSETS.banner_5_desktop = {
+  w: 1920, h: 300,
+  draw: () => bannerBgHue('violet', 1920, 300) +
+    confetti(860, 14, 1660, 120, 34, 11) + confetti(1480, 150, 1680, 290, 10, 5) +
+    tagChip(320, 22, 34, 'LIMITED-TIME OFFER', C.gold, 0, true) +
+    markLine(320, 110, 50, '', 'FREE', ' Test Series', true) +
+    markLine(320, 164, 50, 'for', '3 Months!', '', true) +
+    T(320, 196, 20, 'All mock tests unlocked · Instant results · Solutions', { weight: 600, color: SUB_ON_HUE }) +
+    contactRow(320, 214, 44, [['phone', BRAND.phone], ['globe', BRAND.web]]) +
+    `<circle cx="1225" cy="330" r="200" fill="#fff" opacity=".14"/>${rings(1225, 330, 250, 3, '#fff', 0.22, 2.5)}` +
+    ticket(905, 66, 280, 146, -7, '3', 'MONTHS', 'FREE', 'TEST SERIES PASS') +
+    student(1190, 66, 0.78, { skin: 'wheat', hair: 'ponytail', top: C.gold, topShade: 'rgba(150,90,0,.25)', collar: 'shirt', pose: 'wave', mouth: 'open' }) +
+    giftBox(1376, 296, 84) +
+    infoCard(1440, 34, 240, 70, 'check', 'All Tests Unlocked', 'Boards + 100+ exams') +
+    infoCard(1470, 150, 220, 66, 'clock', '₹0 for 90 days', 'Start today', { iconBg: '#FF6B8A', iconColor: '#fff' }) +
+    sparkle(1170, 40, 14) + sparkle(880, 250, 10, '#fff') + sparkle(1400, 130, 9, C.gold),
+};
+
+ASSETS.banner_5_mobile = {
+  w: 750, h: 400, scale: 2,
+  draw: () => bannerBgHue('violet', 750, 400) +
+    confetti(400, 20, 740, 160, 22, 11, 1.1) +
+    `<circle cx="600" cy="430" r="190" fill="#fff" opacity=".14"/>` +
+    ticket(430, 44, 250, 128, -8, '3', 'MONTHS', 'FREE', 'TEST SERIES PASS') +
+    student(500, 196, 0.68, { skin: 'wheat', hair: 'ponytail', top: C.gold, topShade: 'rgba(150,90,0,.25)', collar: 'shirt', pose: 'wave', mouth: 'open' }) +
+    giftBox(660, 398, 70) +
+    tagChip(30, 34, 32, 'LIMITED-TIME OFFER', C.gold, 0, true) +
+    markLine(30, 118, 46, '', 'FREE', ' Test Series', true) +
+    markLine(30, 170, 46, 'for', '3 Months!', '', true) +
+    T(30, 206, 21, 'All mock tests unlocked · ₹0', { weight: 600, color: SUB_ON_HUE }) +
+    pill(30, 232, 46, 'phone', BRAND.phone) +
+    pill(30, 290, 46, 'globe', BRAND.web, { bg: '#fff', fg: C.ink, stroke: '#E9E3FF' }) +
+    sparkle(720, 220, 9, '#fff') + sparkle(420, 210, 8, C.gold),
+};
+
+// Banner 6: school boards (teal).
+const BOARD_CHIPS = [['CBSE', '#2563EB'], ['ICSE', '#EA580C'], ['UP Board', '#16A34A'], ['NIOS', '#0D9488'], ['+20 State Boards', '#DB2777']];
+
+ASSETS.banner_6_desktop = {
+  w: 1920, h: 300,
+  draw: () => bannerBgHue('teal', 1920, 300) +
+    markLine(320, 92, 50, 'Ace Your', 'Board Exams', '', true) +
+    markLine(320, 148, 50, 'Class', '1 to 12.', '', true) +
+    T(320, 184, 20, 'Chapter-wise tests &amp; board mocks for every major board.', { weight: 600, color: SUB_ON_HUE }) +
+    contactRow(320, 206, 44, [['phone', BRAND.phone], ['globe', BRAND.web]]) +
+    `<path d="M1010 300 C1050 150 1330 150 1370 300 Z" fill="#fff" opacity=".16"/>${rings(1190, 300, 240, 3, '#fff', 0.2, 2.5)}` +
+    tagChip(940, 40, 44, BOARD_CHIPS[0][0], BOARD_CHIPS[0][1], -6) +
+    tagChip(925, 112, 44, BOARD_CHIPS[1][0], BOARD_CHIPS[1][1], 4) +
+    tagChip(945, 190, 44, BOARD_CHIPS[2][0], BOARD_CHIPS[2][1], -3) +
+    tagChip(1290, 26, 40, BOARD_CHIPS[3][0], BOARD_CHIPS[3][1], 6) +
+    student(1100, 70, 0.76, { skin: 'brown', hair: 'braid', top: C.ink, collar: 'shirt', pose: 'books', mouth: 'open', glasses: true }) +
+    reportCard(1380, 54, 190, 5, '#0F766E') +
+    tagChip(1580, 240, 40, BOARD_CHIPS[4][0], BOARD_CHIPS[4][1], -4, true) +
+    sparkle(1300, 110, 13, C.gold) + sparkle(1610, 60, 10, '#fff') + sparkle(880, 268, 9, C.gold) +
+    formulaChip(1700, 186, 'H₂SO₄', 22, -6),
+};
+
+ASSETS.banner_6_mobile = {
+  w: 750, h: 400, scale: 2,
+  draw: () => bannerBgHue('teal', 750, 400) +
+    `<path d="M440 400 C470 270 720 270 750 400 Z" fill="#fff" opacity=".16"/>` +
+    tagChip(460, 40, 36, 'CBSE', '#2563EB', -6) + tagChip(590, 30, 36, 'ICSE', '#EA580C', 5) +
+    tagChip(450, 100, 36, 'UP Board', '#16A34A', 3) + tagChip(610, 92, 36, 'NIOS', '#0D9488', -4) +
+    student(500, 186, 0.68, { skin: 'brown', hair: 'braid', top: C.ink, collar: 'shirt', pose: 'books', mouth: 'open', glasses: true }) +
+    tagChip(560, 160, 32, '+20 State Boards', '#DB2777', -3, true) +
+    markLine(30, 100, 46, 'Ace Your', '', '', true) +
+    markLine(30, 152, 46, '', 'Board Exams', '', true) +
+    T(30, 194, 21, 'Class 1 to 12 · Chapter-wise tests', { weight: 600, color: SUB_ON_HUE }) +
+    pill(30, 228, 46, 'phone', BRAND.phone) +
+    pill(30, 286, 46, 'globe', BRAND.web, { bg: '#fff', fg: C.ink, stroke: '#CFF5EE' }) +
+    sparkle(720, 250, 9, '#fff') + sparkle(440, 180, 8, C.gold),
+};
+
+// Banner 7: competitive exams (blue).
+const EXAM_CHIPS = [['JEE', '#F97316'], ['NEET', '#22C55E'], ['UPSC', '#EC4899'], ['SSC', '#8B5CF6'], ['Banking', '#0EA5E9'], ['CUET', '#EAB308'], ['GATE', '#EF4444'], ['NDA', '#14B8A6']];
+
+ASSETS.banner_7_desktop = {
+  w: 1920, h: 300,
+  draw: () => bannerBgHue('blue', 1920, 300) +
+    markLine(320, 92, 46, 'Crack Your', 'Dream Exam', '', true) +
+    markLine(320, 148, 46, 'with', 'Real Mocks.', '', true) +
+    T(320, 184, 20, 'Full mocks · PYQ papers · Topic tests · 100+ exams', { weight: 600, color: SUB_ON_HUE }) +
+    contactRow(320, 206, 44, [['phone', BRAND.phone], ['globe', BRAND.web]]) +
+    `<circle cx="1180" cy="330" r="220" fill="#fff" opacity=".13"/>${rings(1180, 330, 270, 3, '#fff', 0.2, 2.5)}` +
+    tagChip(915, 34, 42, 'JEE', EXAM_CHIPS[0][1], -5) + tagChip(1030, 24, 42, 'NEET', EXAM_CHIPS[1][1], 4) +
+    tagChip(905, 104, 42, 'UPSC', EXAM_CHIPS[2][1], 3) + tagChip(915, 176, 42, 'SSC', EXAM_CHIPS[3][1], -4) +
+    tagChip(1300, 28, 42, 'Banking', EXAM_CHIPS[4][1], 5) + tagChip(1290, 102, 42, 'CUET', EXAM_CHIPS[5][1], -3) +
+    tagChip(1310, 176, 42, 'GATE', EXAM_CHIPS[6][1], 4) + tagChip(1000, 236, 40, 'NDA', EXAM_CHIPS[7][1], -2) +
+    student(1095, 68, 0.78, { skin: 'light', hair: 'short', top: C.gold, topShade: 'rgba(150,90,0,.25)', collar: 'hoodie', pose: 'think', glasses: true }) +
+    target(1500, 196, 54) +
+    infoCard(1450, 34, 240, 70, 'trophy', 'Rank Booster', 'All-India comparison') +
+    sparkle(1240, 250, 12, C.gold) + sparkle(1630, 140, 10, '#fff') + sparkle(860, 270, 9, '#fff') +
+    formulaChip(1700, 196, '∫ x dx', 22, -6),
+};
+
+ASSETS.banner_7_mobile = {
+  w: 750, h: 400, scale: 2,
+  draw: () => bannerBgHue('blue', 750, 400) +
+    `<circle cx="590" cy="430" r="200" fill="#fff" opacity=".13"/>` +
+    tagChip(440, 36, 34, 'JEE', '#F97316', -5) + tagChip(540, 26, 34, 'NEET', '#22C55E', 4) +
+    tagChip(650, 40, 34, 'UPSC', '#EC4899', -3) + tagChip(430, 104, 34, 'SSC', '#8B5CF6', 3) +
+    tagChip(630, 104, 34, 'Banking', '#0EA5E9', -4) +
+    student(490, 190, 0.68, { skin: 'light', hair: 'short', top: C.gold, topShade: 'rgba(150,90,0,.25)', collar: 'hoodie', pose: 'think', glasses: true }) +
+    target(690, 300, 36) +
+    markLine(30, 100, 46, 'Crack Your', '', '', true) +
+    markLine(30, 152, 46, '', 'Dream Exam', '', true) +
+    T(30, 194, 21, 'Mocks · PYQs · 100+ exams', { weight: 600, color: SUB_ON_HUE }) +
+    pill(30, 228, 46, 'phone', BRAND.phone) +
+    pill(30, 286, 46, 'globe', BRAND.web, { bg: '#fff', fg: C.ink, stroke: '#DCE8FF' }) +
+    sparkle(420, 200, 8, C.gold),
+};
+
 /* ---------- login / signup: desktop 1000x1400 (safe x 190..810, keep y > 1270 quiet) ---------- */
 
 // Centered line with an optional gold-highlighted tail.

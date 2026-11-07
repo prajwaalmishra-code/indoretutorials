@@ -119,6 +119,7 @@ TEMPLATES = [
                 "adminpanel.context_processors.site_contact",
                 "adminpanel.context_processors.seo",
                 "video_courses.context_processors.categories_context",
+                "base.context_processors.auth_redirect",
             ],
             "loaders": [
                 (
@@ -270,10 +271,9 @@ RAZORPAY_KEY_SECRET = os.environ.get("RAZORPAY_KEY_SECRET", "")
 
 JITSI_DOMAIN = os.environ.get("JITSI_DOMAIN", "meet.jit.si")
 
-# "Tutor" AI teacher chat on the home page (Vidhyantra chat API)
-TUTOR_API_URL = os.environ.get("TUTOR_API_URL", "https://www.vidhyantra.online/api/v1/chat/")
+# "Tutor" AI teacher chat. Key, model and options are edited in the admin panel (Tutor AI);
+# this environment variable is only the fallback key when none is saved there.
 TUTOR_API_KEY = os.environ.get("TUTOR_API_KEY", "")
-TUTOR_MODEL = os.environ.get("TUTOR_MODEL", "sol")
 
 # --------------------
 # DEFAULTS

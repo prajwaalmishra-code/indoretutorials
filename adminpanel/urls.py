@@ -114,6 +114,7 @@ urlpatterns = [
 
     # Razorpay Configuration URLs
     path('razorpay/', views.razorpay_configuration, name='razorpay_configuration'),
+    path('tutor-ai/', views.tutor_admin, name='tutor_admin'),
     path('razorpay/edit/<int:config_id>/', views.razorpay_configuration, name='razorpay_edit'),
     path('razorpay/delete/<int:config_id>/', views.razorpay_delete, name='razorpay_delete'),
 

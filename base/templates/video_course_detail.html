@@ -891,7 +891,7 @@
                         </button>
                     {% endif %}
                 {% else %}
-                    <a href="{% url 'login' %}" class="btn-primary" style="text-decoration: none;">
+                    <a href="{{ login_url }}" class="btn-primary" style="text-decoration: none;">
                         <i class="fas fa-sign-in-alt"></i> Login to {% if course.is_free %}Enroll{% else %}Purchase{% endif %}
                     </a>
                 {% endif %}

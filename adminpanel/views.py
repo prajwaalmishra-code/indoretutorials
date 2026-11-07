@@ -2349,3 +2349,119 @@ def audit_log(request):
         'failed_logins_24h': AdminAuditLog.objects.filter(action='login_failed', created_at__gte=since).count(),
         'changes_24h': AdminAuditLog.objects.filter(action__in=['create', 'update', 'delete'], created_at__gte=since).count(),
     })
+
+
+# ======================== TUTOR AI ========================
+
+@login_required(login_url='login')
+@user_passes_test(is_admin)
+def tutor_admin(request):
+    """Tutor AI: provider key and options, usage numbers, and the log of what students asked."""
+    from datetime import datetime, time as dtime
+    from django.db.models import Avg
+    from django.db.models.functions import TruncDate
+    from base import tutor as tutor_service
+
+    config = TutorSettings.load()
+    config = TutorSettings.objects.get(pk=config.pk)  # fresh row for editing, not the cached copy
+    form = TutorSettingsForm(instance=config)
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'test':
+            reply, usage, error, latency = tutor_service.timed_ask(
+                config, [{'role': 'user', 'content': 'Reply with just the word OK.'}])
+            if reply:
+                messages.success(request, f'Connection works: "{reply[:60]}" in {latency / 1000:.1f}s using {config.model_name}.')
+            else:
+                messages.error(request, f'Connection failed: {error or "no reply"}.')
+            return redirect('tutor_admin')
+        form = TutorSettingsForm(request.POST, instance=config)
+        if form.is_valid():
+            saved = form.save(commit=False)
+            saved.updated_by = request.user
+            saved.save()
+            messages.success(request, 'Tutor settings saved.')
+            return redirect('tutor_admin')
+        messages.error(request, 'Please correct the errors below.')
+
+    queries = TutorQuery.objects.select_related('user')
+    now = timezone.localtime()
+    today_start = timezone.make_aware(datetime.combine(now.date(), dtime.min), now.tzinfo)
+    answered = queries.filter(status='ok')
+    stats = {
+        'total': queries.count(),
+        'today': queries.filter(created_at__gte=today_start).count(),
+        'week': queries.filter(created_at__gte=now - timedelta(days=7)).count(),
+        'answered': answered.count(),
+        'errors': queries.filter(status='error').count(),
+        'users': queries.exclude(user=None).values('user').distinct().count(),
+        'guests': queries.filter(user=None).values('ip_address').distinct().count(),
+        'avg_seconds': (answered.aggregate(v=Avg('latency_ms'))['v'] or 0) / 1000,
+        'tokens': sum(answered.aggregate(p=Sum('prompt_tokens'), c=Sum('completion_tokens')).values(), 0) if answered.exists() else 0,
+    }
+    since = (now - timedelta(days=13)).date()
+    per_day = dict(
+        queries.filter(created_at__date__gte=since).annotate(day=TruncDate('created_at', tzinfo=now.tzinfo))
+        .values_list('day').annotate(n=Count('id')).values_list('day', 'n')
+    )
+    days = [since + timedelta(days=i) for i in range(14)]
+    peak = max(per_day.values(), default=0) or 1
+    chart = [{'day': d, 'count': per_day.get(d, 0), 'height': round(per_day.get(d, 0) * 100 / peak)} for d in days]
+    top_users = (
+        queries.exclude(user=None).values('user__id', 'user__email', 'user__first_name', 'user__last_name')
+        .annotate(n=Count('id')).order_by('-n')[:6]
+    )
+
+    # Filters for the question log
+    search = request.GET.get('q', '').strip()
+    status = request.GET.get('status', '')
+    who = request.GET.get('who', '')
+    log = queries
+    if search:
+        log = log.filter(
+            Q(question__icontains=search) | Q(user__email__icontains=search)
+            | Q(user__first_name__icontains=search) | Q(user__last_name__icontains=search)
+            | Q(ip_address__icontains=search) | Q(page__icontains=search)
+        )
+    if status in dict(TutorQuery.STATUS_CHOICES):
+        log = log.filter(status=status)
+    if who == 'users':
+        log = log.exclude(user=None)
+    elif who == 'guests':
+        log = log.filter(user=None)
+    if request.GET.get('user', '').isdigit():
+        log = log.filter(user_id=int(request.GET['user']))
+
+    if request.GET.get('export') == 'csv':
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="tutor-questions-{now:%Y%m%d}.csv"'
+        writer = csv.writer(response)
+        writer.writerow(['Time', 'User', 'Email', 'IP', 'Page', 'Question', 'Status', 'Seconds', 'Tokens', 'Reply'])
+        for item in log[:5000]:
+            writer.writerow([
+                timezone.localtime(item.created_at).strftime('%Y-%m-%d %H:%M'),
+                item.user.get_full_name() if item.user else 'Guest', item.user.email if item.user else '',
+                item.ip_address or '', item.page, item.question, item.get_status_display(),
+                f"{item.latency_ms / 1000:.1f}", item.prompt_tokens + item.completion_tokens, item.reply,
+            ])
+        return response
+
+    page_obj = Paginator(log, 25).get_page(request.GET.get('page'))
+    params = request.GET.copy()
+    params.pop('page', None)
+    context = {
+        'form': form,
+        'config': config,
+        'stats': stats,
+        'chart': chart,
+        'top_users': top_users,
+        'page_obj': page_obj,
+        'search': search,
+        'status': status,
+        'who': who,
+        'status_choices': TutorQuery.STATUS_CHOICES,
+        'filter_query': params.urlencode(),
+        'env_key_in_use': not config.api_key and bool(settings.TUTOR_API_KEY),
+    }
+    return render(request, 'adminpanel/tutor_admin.html', context)

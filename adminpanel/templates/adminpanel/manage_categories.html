@@ -96,22 +96,22 @@
     <!-- Analytics Cards -->
     <div class="analytics-grid">
         <div class="analytics-card">
-            <div class="analytics-icon icon-total">📂</div>
+            <div class="analytics-icon icon-total"><i class="fas fa-folder-open"></i></div>
             <div class="analytics-value">{{ total_categories }}</div>
             <div class="analytics-label">Total Categories</div>
         </div>
         <div class="analytics-card">
-            <div class="analytics-icon icon-active">✅</div>
+            <div class="analytics-icon icon-active"><i class="fas fa-circle-check"></i></div>
             <div class="analytics-value">{{ total_categories }}</div>
             <div class="analytics-label">Active Categories</div>
         </div>
         <div class="analytics-card">
-            <div class="analytics-icon icon-usage">🎓</div>
+            <div class="analytics-icon icon-usage"><i class="fas fa-graduation-cap"></i></div>
             <div class="analytics-value">0</div>
             <div class="analytics-label">Courses</div>
         </div>
         <div class="analytics-card">
-            <div class="analytics-icon icon-discount">📈</div>
+            <div class="analytics-icon icon-discount"><i class="fas fa-chart-line"></i></div>
             <div class="analytics-value">{{ categories.paginator.num_pages|default:1 }}</div>
             <div class="analytics-label">Pages</div>
         </div>

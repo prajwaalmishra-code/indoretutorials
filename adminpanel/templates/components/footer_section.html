@@ -1,108 +1,82 @@
 {% if footer_settings %}
+{% load static %}
 <!-- Dynamic Footer -->
 <footer class="footer">
+    <div class="footer-cta">
+        <div class="footer-cta__text">
+            <strong>Ready for your next exam?</strong>
+            <span>Start with a free demo test in any series. No payment needed.</span>
+        </div>
+        <a class="footer-cta__btn" href="{% url 'all_test_series' %}">Browse Test Series <i class="fas fa-arrow-right" aria-hidden="true"></i></a>
+    </div>
+
     <div class="footer-inner">
-        <div class="footer-logo-col">
-            <div class="footer-logo-row">
+        <div class="footer-brand">
+            <a href="/" class="footer-logo-link" aria-label="Indore Tutorials home">
                 {% if footer_settings.logo %}
                     <img loading="lazy" decoding="async" src="{{ footer_settings.logo.url }}" alt="Indore Tutorials logo" class="footer-logo-img">
                 {% else %}
-                    {% load static %}
                     <img loading="lazy" decoding="async" src="{% static 'img/footerlogo.png' %}" alt="Indore Tutorials logo" class="footer-logo-img">
                 {% endif %}
-            </div>
+            </a>
+            <p class="footer-tagline">Exam-pattern mock tests for school boards and competitive exams, with instant results and detailed solutions.</p>
 
-            <div class="footer-mail-row footer-contact-row">
-                <span class="footer-mail-label">Mail:</span>
-                <a href="mailto:{{ footer_settings.email }}" class="footer-mail">{{ footer_settings.email }}</a>
-            </div>
-            <div class="footer-mail-row footer-contact-row">
-                <span class="footer-mail-label">Call:</span>
-                <a href="tel:+91{{ site_contact.phone }}" class="footer-mail">{{ site_contact.phone_display }}</a>
-            </div>
-            <address class="footer-mail-row footer-address">
-                <span class="footer-mail-label">Address:</span>
-                <a href="{{ site_contact.maps_url }}" class="footer-mail" target="_blank" rel="noopener noreferrer">{{ site_contact.address }}</a>
-            </address>
-            
-            <!-- PWA Install Button (replaces app store badges) -->
-            <div class="footer-install-container">
-                <button id="footer-install-pwa-btn" class="footer-install-btn">
-                    <i class="fa fa-download"></i>
-                    <span>Install Our App</span>
-                </button>
-                <p class="footer-install-description">Get instant access to all courses offline!</p>
-            </div>
-            
-            <!-- Social Media Links -->
-            <div class="footer-social-row">
-                {% if footer_settings.facebook_url %}
-                    <a href="{{ footer_settings.facebook_url }}" class="footer-social social-facebook" title="Facebook" target="_blank" rel="noopener noreferrer">
-                        <i class="fab fa-facebook-f"></i>
-                    </a>
-                {% endif %}
-                {% if footer_settings.twitter_url %}
-                    <a href="{{ footer_settings.twitter_url }}" class="footer-social social-twitter" title="Twitter" target="_blank" rel="noopener noreferrer">
-                        <i class="fab fa-twitter"></i>
-                    </a>
-                {% endif %}
-                {% if footer_settings.youtube_url %}
-                    <a href="{{ footer_settings.youtube_url }}" class="footer-social social-youtube" title="YouTube" target="_blank" rel="noopener noreferrer">
-                        <i class="fab fa-youtube"></i>
-                    </a>
-                {% endif %}
-                {% if footer_settings.linkedin_url %}
-                    <a href="{{ footer_settings.linkedin_url }}" class="footer-social social-linkedin" title="LinkedIn" target="_blank" rel="noopener noreferrer">
-                        <i class="fab fa-linkedin-in"></i>
-                    </a>
-                {% endif %}
-                {% if footer_settings.instagram_url %}
-                    <a href="{{ footer_settings.instagram_url }}" class="footer-social social-instagram" title="Instagram" target="_blank" rel="noopener noreferrer">
-                        <i class="fab fa-instagram"></i>
-                    </a>
-                {% endif %}
-                {% if footer_settings.telegram_url %}
-                    <a href="{{ footer_settings.telegram_url }}" class="footer-social social-telegram" title="Telegram" target="_blank" rel="noopener noreferrer">
-                        <i class="fab fa-telegram-plane"></i>
-                    </a>
-                {% endif %}
-                {% if footer_settings.whatsapp_url %}
-                    <a href="{{ footer_settings.whatsapp_url }}" class="footer-social social-whatsapp" title="WhatsApp" target="_blank" rel="noopener noreferrer">
-                        <i class="fab fa-whatsapp"></i>
-                    </a>
-                {% endif %}
-            </div>
+            <ul class="footer-contact">
+                <li>
+                    <span class="footer-contact__icon"><i class="fas fa-envelope" aria-hidden="true"></i></span>
+                    <a href="mailto:{{ footer_settings.email }}">{{ footer_settings.email }}</a>
+                </li>
+                <li>
+                    <span class="footer-contact__icon"><i class="fas fa-phone" aria-hidden="true"></i></span>
+                    <a href="tel:+91{{ site_contact.phone }}">{{ site_contact.phone_display }}</a>
+                </li>
+                <li>
+                    <span class="footer-contact__icon"><i class="fas fa-location-dot" aria-hidden="true"></i></span>
+                    <address><a href="{{ site_contact.maps_url }}" target="_blank" rel="noopener noreferrer">{{ site_contact.address }}</a></address>
+                </li>
+            </ul>
+
+            <div class="footer-social-row">{% if footer_settings.facebook_url %}<a href="{{ footer_settings.facebook_url }}" class="footer-social" title="Facebook" aria-label="Facebook" target="_blank" rel="noopener noreferrer"><i class="fab fa-facebook-f"></i></a>{% endif %}{% if footer_settings.twitter_url %}<a href="{{ footer_settings.twitter_url }}" class="footer-social" title="X (Twitter)" aria-label="X (Twitter)" target="_blank" rel="noopener noreferrer"><i class="fab fa-x-twitter"></i></a>{% endif %}{% if footer_settings.youtube_url %}<a href="{{ footer_settings.youtube_url }}" class="footer-social" title="YouTube" aria-label="YouTube" target="_blank" rel="noopener noreferrer"><i class="fab fa-youtube"></i></a>{% endif %}{% if footer_settings.linkedin_url %}<a href="{{ footer_settings.linkedin_url }}" class="footer-social" title="LinkedIn" aria-label="LinkedIn" target="_blank" rel="noopener noreferrer"><i class="fab fa-linkedin-in"></i></a>{% endif %}{% if footer_settings.instagram_url %}<a href="{{ footer_settings.instagram_url }}" class="footer-social" title="Instagram" aria-label="Instagram" target="_blank" rel="noopener noreferrer"><i class="fab fa-instagram"></i></a>{% endif %}{% if footer_settings.telegram_url %}<a href="{{ footer_settings.telegram_url }}" class="footer-social" title="Telegram" aria-label="Telegram" target="_blank" rel="noopener noreferrer"><i class="fab fa-telegram-plane"></i></a>{% endif %}{% if footer_settings.whatsapp_url %}<a href="{{ footer_settings.whatsapp_url }}" class="footer-social" title="WhatsApp" aria-label="WhatsApp" target="_blank" rel="noopener noreferrer"><i class="fab fa-whatsapp"></i></a>{% endif %}</div>
         </div>
-        
-        <!-- Dynamic Footer Links by Section -->
-        {% for section_key, section_name in footer_sections %}
+
+        <nav class="footer-links" aria-label="Footer">
             <div class="footer-links-col">
-                <h4>{{ section_name }}</h4>
-                {% for link in footer_links %}
-                    {% if link.section == section_key %}
-                        <a class="footer-link" href="{{ link.url }}">{{ link.title }}</a>
-                    {% endif %}
-                {% endfor %}
-                
-                <!-- Special handling for Business section language selector -->
-                {% if section_key == 'business' %}
-                    <div class="footer-language">
-                        <select class="footer-selectbox" aria-label="Select Language">
-                            <option>English</option>
-                            <option>Hindi</option>
-                        </select>
-                    </div>
-                {% endif %}
+                <h4>Test Series</h4>
+                <a class="footer-link" href="{% url 'all_test_series' %}?board=cbse">CBSE</a>
+                <a class="footer-link" href="{% url 'all_test_series' %}?board=icse">ICSE / ISC</a>
+                <a class="footer-link" href="{% url 'all_test_series' %}?board=up">UP Board</a>
+                <a class="footer-link" href="{% url 'all_test_series' %}?board=nios">NIOS</a>
+                <a class="footer-link footer-link--strong" href="{% url 'all_test_series' %}">All Test Series</a>
             </div>
-        {% endfor %}
+            {% for section_key, section_name in footer_sections %}
+                <div class="footer-links-col">
+                    <h4>{{ section_name }}</h4>
+                    {% for link in footer_links %}
+                        {% if link.section == section_key %}
+                            <a class="footer-link" href="{{ link.url }}">{{ link.title }}</a>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            {% endfor %}
+        </nav>
     </div>
-    
+
+    <div class="footer-app">
+        <div class="footer-app__text">
+            <span class="footer-app__icon"><i class="fas fa-mobile-screen-button" aria-hidden="true"></i></span>
+            <span><strong>Get the Indore Tutorials app</strong> Take tests faster from your home screen.</span>
+        </div>
+        <button id="footer-install-pwa-btn" class="footer-install-btn" type="button">
+            <i class="fa fa-download" aria-hidden="true"></i>
+            <span>Install App</span>
+        </button>
+    </div>
+
     <div class="footer-legal">
         <div class="footer-copyright">{{ footer_settings.copyright_text }}</div>
         {% if footer_legal_links %}
             <div class="footer-legal-links">
                 {% for legal_link in footer_legal_links %}
-                    {% if not forloop.first %}<span class="footer-dot">&bull;</span>{% endif %}
                     <a href="{{ legal_link.url }}">{{ legal_link.title }}</a>
                 {% endfor %}
             </div>
@@ -111,336 +85,157 @@
 </footer>
 
 <style>
-/* Footer styles */
 .footer {
-    background: #1b1c22;
-    color: #b8bac3;
-    font-size: 16px;
-    letter-spacing: 0;
-    padding: 43px 0 12px 0;
+    --footer-bg: #14141b;
+    --footer-panel: #1d1e26;
+    --footer-line: rgba(255, 255, 255, 0.08);
+    --footer-text: #c3c6d0;
+    --footer-muted: #8a8f9c;
+    --footer-accent: var(--brand-primary, #FCBC00);
+    background: var(--footer-bg);
+    color: var(--footer-text);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    /* Room for the floating Ask Tutor / Install App buttons so they never cover the copyright line */
+    padding: 0 0 96px;
+    margin-top: 64px;
 }
+
+/* Call-to-action band overlapping the footer's top edge */
+.footer-cta {
+    max-width: 1192px;
+    margin: 0 auto;
+    position: relative;
+    top: -40px;
+    margin-bottom: -16px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px 24px; flex-wrap: wrap;
+    padding: 22px 28px;
+    border-radius: 18px;
+    background: linear-gradient(120deg, var(--footer-accent), var(--brand-primary-dark, #cf9a00));
+    color: var(--brand-on-primary, #14141b);
+    box-shadow: 0 18px 40px rgba(var(--brand-primary-rgb, 252, 188, 0), 0.28);
+}
+.footer-cta__text strong { display: block; font-size: clamp(18px, 2vw, 22px); font-weight: 800; }
+.footer-cta__text span { font-size: 15px; font-weight: 500; opacity: 0.85; }
+.footer-cta__btn {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 12px 24px; border-radius: 999px;
+    background: #14141b; color: #fff; font-weight: 700; text-decoration: none;
+    transition: transform .2s ease, background .2s ease;
+}
+.footer-cta__btn:hover { transform: translateY(-2px); background: #000; color: #fff; }
 
 .footer-inner {
-    max-width: 1320px;
-    margin: 0 auto 0 auto;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 26px 12px;
-    justify-content: space-between;
-    align-items: flex-start;
-    padding: 0 40px;
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 0 24px;
+    display: grid;
+    grid-template-columns: minmax(260px, 1.15fr) 2.6fr;
+    gap: 40px 56px;
 }
 
-.footer-logo-row {
-    display: flex;
-    align-items: flex-end;
-    gap: 6px;
-    margin-bottom: 7px;
-}
+.footer-logo-img { height: 60px; width: auto; display: block; }
+.footer-tagline { margin: 14px 0 18px; line-height: 1.6; color: var(--footer-muted); max-width: 340px; }
 
-.footer-logo-img {
-    height: 65px;
+.footer-contact { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.footer-contact li { display: flex; align-items: flex-start; gap: 12px; }
+.footer-contact__icon {
+    flex: 0 0 32px; height: 32px; border-radius: 9px;
+    display: grid; place-items: center;
+    background: rgba(var(--brand-primary-rgb, 252, 188, 0), 0.12); color: var(--footer-accent); font-size: 13px;
 }
+.footer-contact address { font-style: normal; max-width: 300px; }
+.footer-contact a { color: #e8e9ee; text-decoration: none; line-height: 1.5; padding-top: 5px; display: inline-block; word-break: break-word; }
+.footer-contact a:hover { color: var(--footer-accent); }
 
-.footer-logo-text {
-    color: #fff;
-    font-weight: 700;
-    font-size: 1.27em;
-    letter-spacing: 1px;
-}
-
-.footer-mail-row {
-    margin-bottom: 16px;
-}
-
-.footer-contact-row {
-    margin-bottom: 8px;
-}
-
-.footer-address {
-    font-style: normal;
-    line-height: 1.5;
-    max-width: 320px;
-}
-
-.footer-mail-label {
-    color: #ffd067;
-    font-weight: 600;
-    margin-right: 4px;
-}
-
-.footer-mail {
-    color: #e8e8e8;
-    text-decoration: none;
-    font-size: 1em;
-    transition: color 0.3s ease;
-}
-
-.footer-mail:hover {
-    color: #ffd067;
-    text-decoration: none;
-}
-
-/* PWA Install Button in Footer */
-.footer-install-container {
-    margin: 18px 0 14px 0;
-}
-
-.footer-install-btn {
-    background: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-primary-dark) 100%);
-    color: var(--brand-on-primary, #14141b);
-    border: none;
-    padding: 12px 24px;
-    border-radius: 25px;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 15px rgba(var(--brand-primary-rgb), 0.3);
-    font-family: var(--font-sans);
-    width: fit-content;
-    margin-bottom: 8px;
-}
-
-.footer-install-btn i {
-    font-size: 16px;
-}
-
-.footer-install-btn:hover {
-    background: linear-gradient(135deg, var(--brand-primary-dark) 0%, #8a1722 100%);
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(var(--brand-primary-rgb), 0.4);
-}
-
-.footer-install-btn:active {
-    transform: translateY(0);
-}
-
-.footer-install-description {
-    color: #b8bac3;
-    font-size: 13px;
-    margin: 0;
-    opacity: 0.85;
-    line-height: 1.4;
-}
-
-.footer-social-row {
-    display: flex;
-    gap: 13px;
-    margin-top: 18px;
-}
-
+.footer-social-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+.footer-social-row:empty { display: none; }
 .footer-social {
-    color: #fff;
-    opacity: 0.9;
-    font-size: 1.2em;
-    transition: color 0.18s, opacity 0.14s, transform 0.3s;
-    background: #252628;
-    border-radius: 50%;
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-decoration: none;
+    width: 38px; height: 38px; border-radius: 10px;
+    display: grid; place-items: center;
+    background: var(--footer-panel); border: 1px solid var(--footer-line);
+    color: #e8e9ee; text-decoration: none; font-size: 16px;
+    transition: background .2s ease, color .2s ease, transform .2s ease;
 }
+.footer-social:hover { background: var(--footer-accent); color: var(--brand-on-primary, #14141b); transform: translateY(-2px); }
 
-.footer-social i {
-    vertical-align: middle;
-    font-size: 18px;
-}
-
-.footer-social:hover {
-    color: #fff;
-    opacity: 1;
-    transform: translateY(-3px);
-}
-
-/* Social Media Brand Colors */
-.social-facebook { background: #3b5998; }
-.social-twitter { background: #1da1f2; }
-.social-youtube { background: #ff0000; }
-.social-linkedin { background: #0077b5; }
-.social-instagram {
-    background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%);
-    color: #fff;
-}
-.social-telegram { background: #0088cc; }
-.social-whatsapp { background: #25d366; }
-
-.footer-social:hover.social-facebook { background: #2d4373; }
-.footer-social:hover.social-twitter { background: #1a8cd8; }
-.footer-social:hover.social-youtube { background: #cc0000; }
-.footer-social:hover.social-linkedin { background: #005582; }
-.footer-social:hover.social-instagram { background: #c13584; }
-.footer-social:hover.social-telegram { background: #0077b5; }
-.footer-social:hover.social-whatsapp { background: #128c7e; }
-
-.footer-links-col {
-    min-width: 158px;
-    line-height: 1.6;
-}
-
+.footer-links { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 28px 24px; }
+.footer-links-col { display: flex; flex-direction: column; min-width: 0; }
 .footer-links-col h4 {
-    color: #ffd067;
-    font-weight: 700;
-    margin: 0 0 12px 0;
-    text-transform: uppercase;
-    font-size: 16.9px;
-    letter-spacing: .4px;
+    color: #fff; font-size: 14px; font-weight: 800; letter-spacing: 0.8px; text-transform: uppercase;
+    margin: 0 0 14px; padding-bottom: 10px; position: relative;
 }
-
+.footer-links-col h4::after {
+    content: ''; position: absolute; left: 0; bottom: 0; width: 28px; height: 3px; border-radius: 3px;
+    background: var(--footer-accent);
+}
 .footer-link {
-    color: #e8e8e8;
-    text-decoration: none;
-    display: block;
-    margin-bottom: 6px;
-    font-size: 1em;
-    opacity: 0.88;
+    color: var(--footer-text); text-decoration: none; padding: 5px 0; line-height: 1.4;
+    transition: color .2s ease, transform .2s ease;
 }
+.footer-link:hover { color: var(--footer-accent); transform: translateX(3px); }
+.footer-link--strong { color: var(--footer-accent); font-weight: 700; }
 
-.footer-link:hover {
-    color: #ffd067;
-    opacity: 1;
-    text-decoration: underline;
+.footer-app {
+    max-width: 1192px;
+    margin: 36px auto 0;
+    padding: 14px 20px;
+    border-radius: 14px;
+    background: var(--footer-panel); border: 1px solid var(--footer-line);
+    display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;
 }
-
-.footer-language {
-    margin-top: 11px;
+.footer-app__text { display: flex; align-items: center; gap: 14px; color: var(--footer-muted); }
+.footer-app__text strong { color: #fff; margin-right: 6px; }
+.footer-app__icon {
+    flex: 0 0 40px; height: 40px; border-radius: 10px; display: grid; place-items: center;
+    background: rgba(var(--brand-primary-rgb, 252, 188, 0), 0.12); color: var(--footer-accent); font-size: 18px;
 }
-
-.footer-selectbox {
-    background: #15161b;
-    border-radius: 7px;
-    color: #f7de9c;
-    padding: 6px 14px;
-    font-size: 1em;
-    border: 1px solid #383939;
-    cursor: pointer;
+.footer-install-btn {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 20px; border-radius: 999px; border: 0; cursor: pointer;
+    background: var(--footer-accent); color: var(--brand-on-primary, #14141b);
+    font: 700 14px/1 var(--font-sans);
+    transition: background .2s ease, transform .2s ease;
 }
+.footer-install-btn:hover { background: var(--brand-primary-dark, #cf9a00); transform: translateY(-2px); }
 
 .footer-legal {
-    text-align: center;
-    border-top: 1px solid #2e2f34;
-    margin-top: 34px;
-    font-size: 0.97em;
-    color: #7c8696;
-    padding: 18px 20px 8px 20px;
-    letter-spacing: 0.04em;
+    max-width: 1192px;
+    margin: 24px auto 0;
+    padding: 18px 0 4px;
+    border-top: 1px solid var(--footer-line);
+    display: flex; align-items: center; justify-content: space-between; gap: 10px 24px; flex-wrap: wrap;
+    font-size: 14px; color: var(--footer-muted);
+}
+.footer-legal-links { display: flex; flex-wrap: wrap; gap: 6px 20px; }
+.footer-legal a { color: var(--footer-muted); text-decoration: none; }
+.footer-legal a:hover { color: var(--footer-accent); }
+
+.footer a:focus-visible, .footer button:focus-visible {
+    outline: 2px solid var(--footer-accent); outline-offset: 3px; border-radius: 6px;
 }
 
-.footer-copyright {
-    margin-bottom: 10px;
+@media (max-width: 1240px) {
+    .footer-cta, .footer-app, .footer-legal { margin-left: 24px; margin-right: 24px; }
 }
-
-.footer-legal-links {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: center;
-    row-gap: 8px;
+@media (max-width: 1100px) {
+    .footer-inner { grid-template-columns: 1fr; gap: 32px; }
+    .footer-links { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
-
-.footer-legal a {
-    color: #ffe093;
-    margin: 0 7px;
-    text-decoration: none;
-    font-size: 0.9em;
-    opacity: 0.91;
-    white-space: nowrap;
+@media (max-width: 640px) {
+    .footer { padding-bottom: 150px; }
+    .footer-cta { margin-left: 16px; margin-right: 16px; padding: 18px; flex-direction: column; align-items: stretch; text-align: center; }
+    .footer-cta__btn { justify-content: center; }
+    .footer-inner { padding: 0 16px; }
+    .footer-links { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .footer-app, .footer-legal { margin-left: 16px; margin-right: 16px; }
+    .footer-install-btn { width: 100%; justify-content: center; }
+    .footer-legal { justify-content: center; text-align: center; }
+    .footer-legal-links { justify-content: center; }
+    .footer-logo-img { height: 50px; }
 }
-
-.footer-legal a:hover {
-    color: #ffd067;
-}
-
-.footer-dot {
-    font-size: 15px;
-    color: #50535a;
-}
-
-@media (max-width: 480px) {
-    .footer-legal {
-        padding: 16px 16px 8px 16px;
-    }
-
-    .footer-legal a {
-        margin: 0 5px;
-        font-size: 0.85em;
-    }
-}
-
-/* Tablet & Mobile Responsive */
-@media (max-width: 900px) {
-    .footer-inner {
-        flex-direction: column;
-        gap: 23px;
-    }
-    
-    .footer-logo-col,
-    .footer-links-col {
-        min-width: 0;
-    }
-    
-    .footer-install-btn {
-        width: 100%;
-        justify-content: center;
-        max-width: 300px;
-    }
-}
-
-@media (max-width: 480px) {
-    .footer-inner {
-        padding: 0 20px;
-    }
-    
-    .footer-logo-img {
-        height: 50px;
-    }
-    
-    .footer-install-btn {
-        padding: 11px 20px;
-        font-size: 14px;
-    }
-    
-    .footer-install-btn i {
-        font-size: 14px;
-    }
-    
-    .footer-install-description {
-        font-size: 12px;
-    }
-    
-    .footer-social {
-        width: 36px;
-        height: 36px;
-    }
-    
-    .footer-social i {
-        font-size: 16px;
-    }
-}
-
-@media (max-width: 360px) {
-    .footer-inner {
-        padding: 0 15px;
-    }
-    
-    .footer-logo-img {
-        height: 45px;
-    }
-    
-    .footer-install-btn {
-        padding: 10px 18px;
-        font-size: 13px;
-    }
-    
-    .footer-install-btn i {
-        font-size: 13px;
-    }
+@media (prefers-reduced-motion: reduce) {
+    .footer * { transition: none !important; }
 }
 </style>
 

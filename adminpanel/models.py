@@ -1205,3 +1205,95 @@ class AdminAuditLog(models.Model):
 
     def __str__(self):
         return f"{self.created_at:%Y-%m-%d %H:%M} {self.user_email or 'anonymous'} {self.action} {self.path}"
+
+
+# ===================== TUTOR (AI TEACHER) =====================
+
+NVIDIA_CHAT_URL = "https://integrate.api.nvidia.com/v1/chat/completions"
+DEFAULT_TUTOR_MODEL = "nvidia/nemotron-3.5-super-vl-120b-a12b"
+
+
+class TutorSettings(models.Model):
+    """Single row: the AI provider key and behaviour of the Tutor chat widget, editable in the admin panel."""
+
+    is_enabled = models.BooleanField(default=True, help_text="Turn the Tutor chat on or off for the whole site.")
+    api_url = models.URLField(default=NVIDIA_CHAT_URL, help_text="OpenAI-compatible chat completions endpoint.")
+    api_key = models.CharField(max_length=300, blank=True, help_text="Provider API key (NVIDIA keys start with nvapi-).")
+    model_name = models.CharField(max_length=150, default=DEFAULT_TUTOR_MODEL)
+    max_tokens = models.PositiveIntegerField(default=1200, validators=[MinValueValidator(100)])
+    temperature = models.DecimalField(max_digits=3, decimal_places=2, default=0.6)
+    enable_thinking = models.BooleanField(
+        default=False, help_text="Let the model reason before answering. Slower, but better for hard maths.")
+    auto_greet = models.BooleanField(
+        default=True, help_text="Pop up a prompt asking visitors what they want to study, once per visit.")
+    greeting = models.CharField(max_length=200, default="What are you preparing for today?")
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+
+    CACHE_KEY = 'tutor-settings'
+
+    class Meta:
+        verbose_name = "Tutor settings"
+        verbose_name_plural = "Tutor settings"
+
+    def __str__(self):
+        return f"Tutor settings ({self.model_name})"
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        cache.delete(self.CACHE_KEY)
+
+    @classmethod
+    def load(cls):
+        """The settings row (created on first use), cached for a minute."""
+        obj = cache.get(cls.CACHE_KEY)
+        if obj is None:
+            obj = cls.objects.first() or cls.objects.create()
+            cache.set(cls.CACHE_KEY, obj, 60)
+        return obj
+
+    @property
+    def effective_key(self):
+        """The admin-panel key, or the TUTOR_API_KEY environment variable as a fallback."""
+        return self.api_key or getattr(settings, 'TUTOR_API_KEY', '')
+
+    @property
+    def masked_key(self):
+        key = self.effective_key
+        if not key:
+            return ''
+        return f"{key[:6]}{'•' * 10}{key[-4:]}" if len(key) > 12 else '•' * len(key)
+
+
+class TutorQuery(models.Model):
+    """One question asked to Tutor: who asked, what, from which page, and how it went."""
+
+    STATUS_CHOICES = [
+        ('ok', 'Answered'),
+        ('error', 'Error'),
+        ('rate_limited', 'Rate limited'),
+        ('disabled', 'Tutor off'),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='tutor_queries')
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    page = models.CharField(max_length=300, blank=True)
+    question = models.TextField()
+    reply = models.TextField(blank=True)
+    status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='ok', db_index=True)
+    error = models.CharField(max_length=300, blank=True)
+    latency_ms = models.PositiveIntegerField(default=0)
+    prompt_tokens = models.PositiveIntegerField(default=0)
+    completion_tokens = models.PositiveIntegerField(default=0)
+    model_name = models.CharField(max_length=150, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "Tutor question"
+        verbose_name_plural = "Tutor questions"
+
+    def __str__(self):
+        return f"{self.created_at:%Y-%m-%d %H:%M} {self.question[:60]}"

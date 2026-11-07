@@ -286,8 +286,8 @@
       <form class="login-form" id="loginForm" novalidate method="post" action="{% url 'login' %}" autocomplete="on">
         {% csrf_token %}
         
-        {% if request.GET.next %}
-          <input type="hidden" name="next" value="{{ request.GET.next }}">
+        {% if auth_next %}
+          <input type="hidden" name="next" value="{{ auth_next }}">
         {% endif %}
         
         <!-- PASSWORD LOGIN -->
@@ -338,7 +338,7 @@
           </button>
           
           <div class="login-signup">
-            Don't have an account? <a href="{% url 'signup' %}">Sign up</a>
+            Don't have an account? <a href="{{ signup_url }}">Sign up</a>
           </div>
           
           <!-- Secure Login Badge -->
@@ -965,7 +965,7 @@
           
           setTimeout(function() {
             closeModal();
-            window.location.href = "{% url 'login' %}";
+            window.location.href = "{{ login_url|escapejs }}";
           }, 2000);
         } else {
           showMessage('resetMessage', data.message, true);

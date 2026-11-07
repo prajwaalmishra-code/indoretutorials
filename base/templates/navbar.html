@@ -26,7 +26,7 @@
 
     <div class="navbar-actions-wrapper">
         <div class="navbar-dropdown">
-            <button class="navbar-link-btn">Explore Exams <span class="fa fa-caret-down"></span></button>
+            <button class="navbar-link-btn navbar-explore-btn" type="button" aria-haspopup="true"><i class="fa-solid fa-compass" aria-hidden="true"></i> Explore Exams <span class="fa-solid fa-chevron-down navbar-caret" aria-hidden="true"></span></button>
             <div class="navbar-dropdown-content exam-menu" id="examMenu">
                 {% if navbar_category_groups %}
                 <div class="exam-menu-top">
@@ -79,13 +79,12 @@
             </div>
         </div>
 
-        <button class="navbar-link-btn" id="openCouponModalBtn" type="button">Apply Coupon</button>
+        <button class="navbar-link-btn" id="openCouponModalBtn" type="button"><i class="fa-solid fa-ticket" aria-hidden="true"></i> Apply Coupon</button>
         
         <!-- DESKTOP NOTIFICATIONS - ALWAYS VISIBLE -->
         <div class="navbar-notification-wrapper">
-            <button class="navbar-notification-btn" id="notificationBtn">
-                <i class="fa fa-bell"></i>
-                <span>Notifications</span>
+            <button class="navbar-notification-btn" id="notificationBtn" type="button" title="Notifications" aria-label="Notifications">
+                <i class="fa-solid fa-bell" aria-hidden="true"></i>
                 <span class="navbar-notification-badge" id="notificationBadge" style="display: none;">0</span>
             </button>
             <div class="navbar-notifications-dropdown" id="notificationsDropdown">
@@ -102,7 +101,7 @@
                     <div class="notifications-not-logged-in">
                         <i class="fa fa-lock"></i>
                         <p>You're not logged in.<br>Please login to view notifications.</p>
-                        <a href="{% url 'login' %}" class="notifications-login-btn">Login Now</a>
+                        <a href="{{ login_url }}" class="notifications-login-btn">Login Now</a>
                     </div>
                     {% endif %}
                 </div>
@@ -110,8 +109,8 @@
         </div>
 
         <!-- MOBILE NOTIFICATIONS - ALWAYS VISIBLE -->
-        <button class="navbar-mobile-notification-btn" id="mobileNotificationBtn">
-            <i class="fa fa-bell"></i>
+        <button class="navbar-mobile-notification-btn" id="mobileNotificationBtn" type="button" aria-label="Notifications">
+            <i class="fa-solid fa-bell" aria-hidden="true"></i>
             <span class="navbar-notification-badge" id="mobileNotificationBadge" style="display: none;">0</span>
         </button>
         
@@ -150,8 +149,8 @@
             </div>
         </div>
         {% else %}
-        <a href="{% url 'login' %}" class="navbar-login-btn">Log In</a>
-        <button class="navbar-signup-btn" onclick="window.location.href='{% url 'signup' %}'">Sign Up</button>
+        <a href="{{ login_url }}" class="navbar-login-btn"><i class="fa-solid fa-arrow-right-to-bracket" aria-hidden="true"></i> Log In</a>
+        <button class="navbar-signup-btn" onclick="window.location.href='{{ signup_url|escapejs }}'">Sign Up</button>
         {% endif %}
 
         {% if navbar_settings %}
@@ -178,8 +177,8 @@
             </a>
         {% endif %}
 
-        <button class="navbar-mobile-toggle" id="navbarMobileToggle">
-            <i class="fa fa-bars"></i>
+        <button class="navbar-mobile-toggle" id="navbarMobileToggle" type="button" aria-label="Open menu" aria-controls="navbarMobileMenu" aria-expanded="false">
+            <i class="fa-solid fa-bars-staggered" aria-hidden="true"></i>
         </button>
     </div>
 </div>
@@ -199,7 +198,7 @@
         <div class="notifications-not-logged-in">
             <i class="fa fa-lock"></i>
             <p>You're not logged in.<br>Please login to view notifications.</p>
-            <a href="{% url 'login' %}" class="notifications-login-btn">Login Now</a>
+            <a href="{{ login_url }}" class="notifications-login-btn">Login Now</a>
         </div>
         {% endif %}
     </div>
@@ -207,137 +206,125 @@
 
 <!-- Mobile Menu -->
 <div class="navbar-mobile-overlay" id="navbarMobileOverlay"></div>
-<div class="navbar-mobile-menu" id="navbarMobileMenu">
-    <div class="navbar-mobile-header">
-        <span>Menu</span>
-        <button class="navbar-mobile-close" id="navbarMobileClose">
-            <i class="fa fa-times"></i>
+<aside class="navbar-mobile-menu mnav" id="navbarMobileMenu" aria-label="Menu" aria-hidden="true">
+    <div class="mnav-head">
+        <a href="{% url 'home' %}" class="mnav-logo">
+            {% if navbar_settings and navbar_settings.logo %}
+                <img src="{{ navbar_settings.logo.url }}" alt="Indore Tutorials">
+            {% else %}
+                <img src="{% static 'img/mainlogo.png' %}" alt="Indore Tutorials">
+            {% endif %}
+        </a>
+        <button class="mnav-close" id="navbarMobileClose" type="button" aria-label="Close menu">
+            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
         </button>
     </div>
-    <div class="navbar-mobile-items">
+
+    <div class="mnav-body">
         {% if user.is_authenticated %}
-            <a href="{% url 'profile_edit' %}">
-                <i class="fa fa-user"></i> Edit Profile
-            </a>
-            <a href="{% url 'my_purchases' %}">
-                <i class="fa fa-shopping-bag"></i> My Purchases
-            </a>
-            <a href="{% url 'my_test_results' %}">
-                <i class="fa fa-chart-line"></i> My Results
-            </a>
-            <button id="mobileViewCouponsBtn">
-                <i class="fa fa-ticket"></i> My Coupons
-            </button>
-            <button id="mobileApplyCouponBtn">
-                <i class="fa fa-tag"></i> Apply Coupon
-            </button>
-            {% if user.is_staff or user.is_superuser %}
-                <a href="{% url 'admindashboard' %}">
-                    <i class="fa fa-dashboard"></i> Admin Dashboard
-                </a>
-            {% endif %}
-
-            <div class="mobile-category-slider-section">
-                <div class="mobile-category-slider-header">
-                    <i class="fa fa-graduation-cap"></i>
-                    <span>Explore Categories</span>
-                </div>
-                <div class="mobile-category-slider-wrapper">
-                    <div class="mobile-category-slider">
-                        {% for category in navbar_categories %}
-                            <a href="{% url 'category_detail' category.slug %}" class="mobile-category-card">
-                                <div class="mobile-category-card-icon">
-                                    <i class="fa fa-{{ category.icon|default:'book' }}"></i>
-                                </div>
-                                <p class="mobile-category-card-name">{{ category.name }}</p>
-                            </a>
-                        {% empty %}
-                            <div style="padding: 20px; text-align: center; color: #999; width: 100%;">
-                                No categories available
-                            </div>
-                        {% endfor %}
-                    </div>
-                    {% if navbar_categories %}
-                    <div class="mobile-slider-scroll-indicator">
-                        <i class="fa fa-angle-left"></i> Swipe to explore <i class="fa fa-angle-right"></i>
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-
-            {% if navbar_settings %}
-                <a href="{{ navbar_settings.get_contact_url }}" 
-                   class="mobile-whatsapp-contact" 
-                   target="_blank" 
-                   rel="noopener noreferrer">
-                    <i class="{{ navbar_settings.get_contact_icon }}"></i>
-                </a>
-            {% else %}
-                <a href="https://wa.me/917489699909?text=Hello"
-                   class="mobile-whatsapp-contact" 
-                   target="_blank" 
-                   rel="noopener noreferrer">
-                    <i class="fab fa-whatsapp"></i>
-                </a>
-            {% endif %}
-            
-            <a href="{% url 'logout_user' %}" style="margin-top: 10px; background: #ffe8e8; color: var(--brand-primary-text);">
-                <i class="fa fa-sign-out"></i> Log Out
+            <a href="{% url 'profile_edit' %}" class="mnav-profile">
+                {% if request.user.profile_image and request.user.profile_image.name %}
+                    <img src="{{ request.user.profile_image.url }}" alt="">
+                {% else %}
+                    <img src="{% static 'img/default-avatar.png' %}" alt="">
+                {% endif %}
+                <span>
+                    <strong>{{ user.get_full_name|default:user.first_name|default:"My account" }}</strong>
+                    <small>{{ user.email }}</small>
+                </span>
+                <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
             </a>
         {% else %}
-            <a href="{% url 'login' %}">
-                <i class="fa fa-sign-in"></i> Log In
-            </a>
-            <a href="{% url 'signup' %}" style="background: var(--brand-primary); color: var(--brand-on-primary, #14141b);">
-                <i class="fa fa-user-plus"></i> Sign Up
-            </a>
-            
-            <div class="mobile-category-slider-section">
-                <div class="mobile-category-slider-header">
-                    <i class="fa fa-graduation-cap"></i>
-                    <span>Explore Categories</span>
-                </div>
-                <div class="mobile-category-slider-wrapper">
-                    <div class="mobile-category-slider">
-                        {% for category in navbar_categories %}
-                            <a href="{% url 'category_detail' category.slug %}" class="mobile-category-card">
-                                <div class="mobile-category-card-icon">
-                                    <i class="fa fa-{{ category.icon|default:'book' }}"></i>
-                                </div>
-                                <p class="mobile-category-card-name">{{ category.name }}</p>
-                            </a>
-                        {% empty %}
-                            <div style="padding: 20px; text-align: center; color: #999; width: 100%;">
-                                No categories available
-                            </div>
-                        {% endfor %}
-                    </div>
-                    {% if navbar_categories %}
-                    <div class="mobile-slider-scroll-indicator">
-                        <i class="fa fa-angle-left"></i> Swipe to explore <i class="fa fa-angle-right"></i>
-                    </div>
-                    {% endif %}
+            <div class="mnav-welcome">
+                <strong>Start practising today</strong>
+                <span>Log in to take tests, track results and use coupons.</span>
+                <div class="mnav-auth">
+                    <a href="{{ login_url }}" class="mnav-btn mnav-btn--ghost"><i class="fa-solid fa-arrow-right-to-bracket" aria-hidden="true"></i> Log In</a>
+                    <a href="{{ signup_url }}" class="mnav-btn mnav-btn--primary"><i class="fa-solid fa-user-plus" aria-hidden="true"></i> Sign Up</a>
                 </div>
             </div>
+        {% endif %}
 
-            {% if navbar_settings %}
-                <a href="{{ navbar_settings.get_contact_url }}" 
-                   class="mobile-whatsapp-contact" 
-                   target="_blank" 
-                   rel="noopener noreferrer">
-                    <i class="{{ navbar_settings.get_contact_icon }}"></i>
+        <nav class="mnav-section" aria-label="Test series">
+            <p class="mnav-label">Test Series</p>
+            <a href="{% url 'all_test_series' %}" class="mnav-link">
+                <i class="fa-solid fa-layer-group" style="--c: 37, 99, 235;" aria-hidden="true"></i><span>All test series</span><i class="fa-solid fa-chevron-right mnav-arrow" aria-hidden="true"></i>
+            </a>
+            <a href="{% url 'all_test_series' %}?paper=pyp" class="mnav-link">
+                <i class="fa-solid fa-clock-rotate-left" style="--c: 234, 88, 12;" aria-hidden="true"></i><span>Previous year papers</span><i class="fa-solid fa-chevron-right mnav-arrow" aria-hidden="true"></i>
+            </a>
+            <a href="{% url 'all_test_series' %}?paper=subject" class="mnav-link">
+                <i class="fa-solid fa-book" style="--c: 22, 163, 74;" aria-hidden="true"></i><span>Subject-wise tests</span><i class="fa-solid fa-chevron-right mnav-arrow" aria-hidden="true"></i>
+            </a>
+        </nav>
+
+        {% if navbar_category_groups %}
+        <div class="mnav-section">
+            <p class="mnav-label">Explore Exams</p>
+            <div class="mnav-groups">
+                {% for group in navbar_category_groups %}
+                    <details class="mnav-group" {% if forloop.first %}open{% endif %}>
+                        <summary>
+                            <i class="fa-solid fa-{{ group.icon }}" aria-hidden="true"></i>
+                            <span>{{ group.label }}</span>
+                            <em>{{ group.categories|length }}</em>
+                            <i class="fa-solid fa-chevron-down mnav-caret" aria-hidden="true"></i>
+                        </summary>
+                        <div class="mnav-chips">
+                            {% for category in group.categories %}
+                                <a href="{% url 'category_detail' category.slug %}" class="mnav-chip">
+                                    <span style="background: rgba({{ category.icon_color_rgb }}, 0.12); color: {{ category.icon_color }};"><i class="fa fa-{{ category.icon|default:'graduation-cap' }}" aria-hidden="true"></i></span>
+                                    {{ category.name }}
+                                </a>
+                            {% endfor %}
+                        </div>
+                    </details>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <nav class="mnav-section" aria-label="Account">
+            <p class="mnav-label">{% if user.is_authenticated %}My Account{% else %}Offers{% endif %}</p>
+            {% if user.is_authenticated %}
+                <a href="{% url 'my_purchases' %}" class="mnav-link">
+                    <i class="fa-solid fa-bag-shopping" style="--c: 124, 58, 237;" aria-hidden="true"></i><span>My purchases</span><i class="fa-solid fa-chevron-right mnav-arrow" aria-hidden="true"></i>
                 </a>
-            {% else %}
-                <a href="https://wa.me/917489699909?text=Hello"
-                   class="mobile-whatsapp-contact" 
-                   target="_blank" 
-                   rel="noopener noreferrer">
-                    <i class="fab fa-whatsapp"></i>
+                <a href="{% url 'my_test_results' %}" class="mnav-link">
+                    <i class="fa-solid fa-chart-line" style="--c: 22, 163, 74;" aria-hidden="true"></i><span>My results</span><i class="fa-solid fa-chevron-right mnav-arrow" aria-hidden="true"></i>
+                </a>
+                <button type="button" id="mobileViewCouponsBtn" class="mnav-link">
+                    <i class="fa-solid fa-ticket" style="--c: 219, 39, 119;" aria-hidden="true"></i><span>My coupons</span><i class="fa-solid fa-chevron-right mnav-arrow" aria-hidden="true"></i>
+                </button>
+            {% endif %}
+            <button type="button" id="mobileApplyCouponBtn" class="mnav-link">
+                <i class="fa-solid fa-tag" style="--c: 202, 138, 4;" aria-hidden="true"></i><span>Apply coupon</span><i class="fa-solid fa-chevron-right mnav-arrow" aria-hidden="true"></i>
+            </button>
+            {% if user.is_staff or user.is_superuser %}
+                <a href="{% url 'admindashboard' %}" class="mnav-link">
+                    <i class="fa-solid fa-gauge" style="--c: 71, 85, 105;" aria-hidden="true"></i><span>Admin dashboard</span><i class="fa-solid fa-chevron-right mnav-arrow" aria-hidden="true"></i>
                 </a>
             {% endif %}
+        </nav>
+    </div>
+
+    <div class="mnav-foot">
+        {% if navbar_settings %}
+            <a href="{{ navbar_settings.get_contact_url }}" class="mnav-contact" target="_blank" rel="noopener noreferrer">
+                <i class="{{ navbar_settings.get_contact_icon }}" aria-hidden="true"></i>
+                <span><strong>{{ navbar_settings.contact_number }}</strong><small>Chat with us {{ navbar_settings.contact_hours }}</small></span>
+            </a>
+        {% else %}
+            <a href="https://wa.me/917489699909?text=Hello" class="mnav-contact" target="_blank" rel="noopener noreferrer">
+                <i class="fab fa-whatsapp" aria-hidden="true"></i>
+                <span><strong>7489699909</strong><small>Chat with us (10 AM to 8 PM)</small></span>
+            </a>
+        {% endif %}
+        {% if user.is_authenticated %}
+            <a href="{% url 'logout_user' %}" class="mnav-logout"><i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i> Log out</a>
         {% endif %}
     </div>
-</div>
+</aside>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -621,8 +608,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const mobileClose = document.getElementById('navbarMobileClose');
     
     function closeMobileMenu() {
+        if (!mobileMenu.classList.contains('active')) return;
         mobileMenu.classList.remove('active');
         mobileOverlay.classList.remove('active');
+        mobileMenu.setAttribute('aria-hidden', 'true');
+        if (mobileToggle) { mobileToggle.setAttribute('aria-expanded', 'false'); mobileToggle.focus(); }
         document.body.style.overflow = '';
     }
     
@@ -630,9 +620,13 @@ document.addEventListener('DOMContentLoaded', function() {
         mobileToggle.addEventListener('click', () => {
             mobileMenu.classList.add('active');
             mobileOverlay.classList.add('active');
+            mobileMenu.setAttribute('aria-hidden', 'false');
+            mobileToggle.setAttribute('aria-expanded', 'true');
             document.body.style.overflow = 'hidden';
+            setTimeout(() => mobileClose && mobileClose.focus(), 50);
         });
     }
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMobileMenu(); });
     
     if (mobileClose) mobileClose.addEventListener('click', closeMobileMenu);
     if (mobileOverlay) mobileOverlay.addEventListener('click', closeMobileMenu);

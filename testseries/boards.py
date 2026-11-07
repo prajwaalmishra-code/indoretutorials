@@ -56,7 +56,8 @@ BOARD_CHOICES = (
     + [('other', 'Other')]
 )
 
-STATE_BOARD_CODES = ['up'] + [b.code for b in STATE_BOARDS]
+# NIOS is a national open-schooling board, listed with the school boards rather than the state boards.
+STATE_BOARD_CODES = ['up'] + [b.code for b in STATE_BOARDS if b.code != 'nios']
 
 # 'Explore Exams' category name -> board codes whose series it lists
 CATEGORY_BOARD_CODES = {

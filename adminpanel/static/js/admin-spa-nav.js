@@ -38,7 +38,9 @@
         e.preventDefault();
         var submenu = this.nextElementSibling;
         if (submenu) {
-          submenu.style.display = submenu.style.display === 'flex' ? 'none' : 'flex';
+          var open = submenu.style.display !== 'flex';
+          submenu.style.display = open ? 'flex' : 'none';
+          this.classList.toggle('admin-open', open);
         }
       });
     });
@@ -111,21 +113,68 @@
     }
   }
 
+  // Nodes a page adds to <head> via {% block extra_css %}, found between the two marker metas.
+  function pageStyleNodes(doc) {
+    var start = doc.querySelector('meta[name="admin-page-styles"][content="start"]');
+    var end = doc.querySelector('meta[name="admin-page-styles"][content="end"]');
+    var nodes = [];
+    if (!start || !end) return null;
+    for (var node = start.nextSibling; node && node !== end; node = node.nextSibling) nodes.push(node);
+    return { start: start, end: end, nodes: nodes };
+  }
+
+  // Replace the current page's head styles with the next page's. Resolves once any new
+  // <link rel="stylesheet"> has loaded, so content is never shown unstyled.
+  function syncPageStyles(doc) {
+    var current = pageStyleNodes(document);
+    var next = pageStyleNodes(doc);
+    if (!current || !next) return Promise.resolve();
+
+    var pending = [];
+    next.nodes.forEach(function (node) {
+      var clone;
+      if (node.nodeType === 1 && node.tagName === 'LINK') {
+        clone = document.createElement('link');
+        Array.prototype.forEach.call(node.attributes, function (a) { clone.setAttribute(a.name, a.value); });
+        if ((clone.rel || '').toLowerCase() === 'stylesheet') {
+          pending.push(new Promise(function (resolve) {
+            clone.addEventListener('load', resolve);
+            clone.addEventListener('error', resolve);
+            setTimeout(resolve, 3000);
+          }));
+        }
+      } else {
+        clone = document.importNode(node, true);
+      }
+      current.end.parentNode.insertBefore(clone, current.end);
+    });
+    return Promise.all(pending).then(function () {
+      current.nodes.forEach(function (node) { if (node.parentNode) node.parentNode.removeChild(node); });
+    });
+  }
+
   function swapContent(html, url, pushState) {
     var doc = new DOMParser().parseFromString(html, 'text/html');
+    var newMain = doc.querySelector('.admin-main');
+    var currentMain = document.querySelector('.admin-main');
 
+    if (!newMain || !currentMain || !pageStyleNodes(doc)) {
+      // Not an admin page built on the shared layout (e.g. redirected to login) - do a real navigation.
+      window.location.href = url;
+      return Promise.resolve();
+    }
+    return syncPageStyles(doc).then(function () { applySwap(doc, url, pushState); });
+  }
+
+  function applySwap(doc, url, pushState) {
     var newSidebar = doc.querySelector('.admin-sidebar');
     var newMain = doc.querySelector('.admin-main');
     var newTitle = doc.querySelector('title');
+    var newScripts = doc.getElementById('admin-page-scripts');
 
     var currentSidebar = document.querySelector('.admin-sidebar');
     var currentMain = document.querySelector('.admin-main');
-
-    if (!newMain || !currentMain) {
-      // Doesn't look like an admin page (e.g. redirected to login) - do a real navigation.
-      window.location.href = url;
-      return;
-    }
+    var currentScripts = document.getElementById('admin-page-scripts');
 
     clearPageTimers();
 
@@ -139,6 +188,12 @@
     if (newTitle) document.title = newTitle.textContent;
 
     executeScripts(currentMain);
+
+    // Page scripts from {% block extra_js %} live outside .admin-main.
+    if (currentScripts) {
+      currentScripts.innerHTML = newScripts ? newScripts.innerHTML : '';
+      executeScripts(currentScripts);
+    }
 
     if (pushState) {
       history.pushState({ adminNav: true }, '', url);
@@ -162,7 +217,7 @@
         return resp.text();
       })
       .then(function (html) {
-        swapContent(html, url, pushState !== false);
+        return swapContent(html, url, pushState !== false);
       })
       .catch(function (err) {
         if (err.name === 'AbortError') return;

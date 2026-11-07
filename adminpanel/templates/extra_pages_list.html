@@ -5,10 +5,10 @@
 {% block content %}
 <div class="ad-main-content">
     <div class="ad-page-header">
-        <h1>📄 Extra Pages</h1>
+        <h1><i class="fas fa-file-lines"></i>Extra Pages</h1>
         <p>Manage static pages like Privacy Policy, Disclaimer, Refund Policy and Contact Us — these show up as links in the site footer.</p>
         <a href="{% url 'extra_page_create' %}" class="ad-btn ad-btn-primary">
-            <span>➕</span> Add New Page
+            <span><i class="fas fa-plus"></i></span> Add New Page
         </a>
     </div>
 
@@ -47,12 +47,12 @@
                                             {% if page.is_active %}
                                                 <a href="{% url 'extra_page_detail' page.slug %}" target="_blank"
                                                    class="action-btn view-btn" title="View Page">
-                                                    <span class="btn-icon">👁️</span><span class="btn-text">View</span>
+                                                    <span class="btn-icon"><i class="fas fa-eye"></i></span><span class="btn-text">View</span>
                                                 </a>
                                             {% endif %}
                                             <a href="{% url 'extra_page_edit' page.pk %}"
                                                class="action-btn edit-btn" title="Edit Page">
-                                                <span class="btn-icon">✏️</span><span class="btn-text">Edit</span>
+                                                <span class="btn-icon"><i class="fas fa-pen"></i></span><span class="btn-text">Edit</span>
                                             </a>
                                             <a href="{% url 'extra_page_toggle_status' page.pk %}"
                                                class="action-btn {% if page.is_active %}hide-btn{% else %}show-btn{% endif %}"
@@ -63,7 +63,7 @@
                                             <a href="{% url 'extra_page_delete' page.pk %}"
                                                onclick="return confirm('Delete this page? This cannot be undone.')"
                                                class="action-btn delete-btn" title="Delete Page">
-                                                <span class="btn-icon">🗑️</span><span class="btn-text">Delete</span>
+                                                <span class="btn-icon"><i class="fas fa-trash"></i></span><span class="btn-text">Delete</span>
                                             </a>
                                         </div>
                                     </td>
@@ -83,7 +83,7 @@
 
     <div class="ad-card">
         <div class="ad-card-header">
-            <h2>⚖️ Footer Legal Links</h2>
+            <h2><i class="fas fa-scale-balanced"></i>Footer Legal Links</h2>
         </div>
         <div class="ad-card-body">
             <p class="ad-help-text" style="margin-bottom: 0;">

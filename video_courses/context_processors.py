@@ -4,7 +4,7 @@ from django.core.cache import cache
 from testseries.boards import STATE_BOARDS
 from testseries.exam_tools import EXAM_GROUPS
 
-SCHOOL_BOARD_CATEGORIES = ['CBSE', 'ICSE', 'UP Board', 'State Board']
+SCHOOL_BOARD_CATEGORIES = ['CBSE', 'ICSE', 'UP Board', 'NIOS', 'State Board']
 
 
 def _group_categories(categories):

@@ -6,7 +6,7 @@
 <div class="ad-main-content">
     <div class="ad-page-header">
         <h1>{{ action }} Footer Settings</h1>
-        <a href="{% url 'footer_edit' %}" class="ad-btn ad-btn-secondary">← Back to Footer Management</a>
+        <a href="{% url 'footer_edit' %}" class="ad-btn ad-btn-secondary"><i class="fas fa-arrow-left"></i>Back to Footer Management</a>
     </div>
 
     <div class="ad-card">
@@ -18,7 +18,7 @@
                 {% csrf_token %}
                 
                 <div class="form-section">
-                    <h3>🏢 Company Information</h3>
+                    <h3><i class="fas fa-building"></i>Company Information</h3>
                     <div class="form-group">
                         <label for="{{ form.logo.id_for_label }}">Footer Logo</label>
                         {{ form.logo }}
@@ -54,7 +54,7 @@
                 </div>
 
                 <div class="form-section">
-                    <h3>📱 App Store Links</h3>
+                    <h3><i class="fas fa-mobile-screen"></i>App Store Links</h3>
                     <div class="form-row">
                         <div class="form-group">
                             <label for="{{ form.google_play_url.id_for_label }}">Google Play Store URL</label>
@@ -74,7 +74,7 @@
                 </div>
 
                 <div class="form-section">
-                    <h3>🔗 Social Media Links</h3>
+                    <h3><i class="fas fa-link"></i>Social Media Links</h3>
                     <div class="form-row">
                         <div class="form-group">
                             <label for="{{ form.facebook_url.id_for_label }}"><i class="fa fa-facebook"></i> Facebook URL</label>
@@ -110,7 +110,7 @@
                 </div>
 
                 <div class="form-section">
-                    <h3>⚙️ Settings</h3>
+                    <h3><i class="fas fa-gear"></i>Settings</h3>
                     <div class="form-group">
                         <label class="form-checkbox">
                             {{ form.is_active }} Active (Show footer settings)

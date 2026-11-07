@@ -23,6 +23,7 @@ from .models import (
     Notification,
     RazorpayConfiguration,
     DropboxConfiguration,
+    TutorSettings,
 )
 
 User = get_user_model()
@@ -951,3 +952,41 @@ class BundleFilterForm(forms.Form):
             attrs={'class': 'form-control'}
         )
     )
+
+
+class TutorSettingsForm(forms.ModelForm):
+    """Tutor AI settings. The key is write-only: leave the field blank to keep the saved key."""
+
+    new_api_key = forms.CharField(
+        required=False, strip=True, label="API key",
+        widget=forms.PasswordInput(render_value=False, attrs={'placeholder': 'Paste a new key to replace the current one', 'autocomplete': 'off'}),
+    )
+    clear_api_key = forms.BooleanField(required=False, label="Remove the saved key")
+
+    class Meta:
+        model = TutorSettings
+        fields = ['is_enabled', 'model_name', 'api_url', 'max_tokens', 'temperature', 'enable_thinking',
+                  'auto_greet', 'greeting']
+        widgets = {
+            'model_name': forms.TextInput(),
+            'api_url': forms.URLInput(),
+            'greeting': forms.TextInput(),
+            'temperature': forms.NumberInput(attrs={'step': '0.05', 'min': '0', 'max': '1.5'}),
+            'max_tokens': forms.NumberInput(attrs={'min': '100', 'max': '8000'}),
+        }
+
+    def clean_temperature(self):
+        value = self.cleaned_data['temperature']
+        if value < 0 or value > 1.5:
+            raise forms.ValidationError("Use a value between 0 and 1.5.")
+        return value
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        if self.cleaned_data.get('clear_api_key'):
+            obj.api_key = ''
+        elif self.cleaned_data.get('new_api_key'):
+            obj.api_key = self.cleaned_data['new_api_key']
+        if commit:
+            obj.save()
+        return obj

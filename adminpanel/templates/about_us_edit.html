@@ -5,10 +5,10 @@
 {% block content %}
 <div class="ad-main-content">
     <div class="ad-page-header">
-        <h1>ℹ️ About Us Management</h1>
+        <h1><i class="fas fa-circle-info"></i>About Us Management</h1>
         <p>Manage your About Us section content</p>
         <a href="{% url 'about_us_section_edit' %}" class="ad-btn ad-btn-secondary">
-            <span>✏️</span> Edit Main Section
+            <span><i class="fas fa-pen"></i></span> Edit Main Section
         </a>
     </div>
     
@@ -16,7 +16,7 @@
     <!-- Main About Us Section Preview -->
     <div class="ad-card">
         <div class="ad-card-header">
-            <h2>👁️ About Us Preview</h2>
+            <h2><i class="fas fa-eye"></i>About Us Preview</h2>
         </div>
         <div class="ad-card-body">
             {% if about_us %}
@@ -46,9 +46,9 @@
     <!-- Why Choose Us Section -->
     <div class="ad-card">
         <div class="ad-card-header">
-            <h2>💡 Why Choose Us Items</h2>
+            <h2><i class="fas fa-lightbulb"></i>Why Choose Us Items</h2>
             <a href="{% url 'why_choose_create' %}" class="ad-btn ad-btn-primary">
-                <span>➕</span> Add Item
+                <span><i class="fas fa-plus"></i></span> Add Item
             </a>
         </div>
         <div class="ad-card-body">
@@ -82,14 +82,14 @@
                                 <td>{{ item.order }}</td>
                                 <td class="ad-actions">
                                     <div class="action-buttons">
-                                        <a href="{% url 'why_choose_edit' item.pk %}" class="action-btn edit-btn" title="Edit">✏️ Edit</a>
+                                        <a href="{% url 'why_choose_edit' item.pk %}" class="action-btn edit-btn" title="Edit"><i class="fas fa-pen"></i>Edit</a>
                                         <a href="{% url 'why_choose_toggle_status' item.pk %}"
                                            class="action-btn {% if item.is_active %}hide-btn{% else %}show-btn{% endif %}">
-                                            {% if item.is_active %}⏸️ Hide{% else %}▶️ Show{% endif %}
+                                            {% if item.is_active %}<i class="fas fa-eye-slash"></i> Hide{% else %}<i class="fas fa-eye"></i> Show{% endif %}
                                         </a>
                                         <a href="{% url 'why_choose_delete' item.pk %}"
                                            onclick="return confirm('Are you sure?')"
-                                           class="action-btn delete-btn">🗑️ Delete</a>
+                                           class="action-btn delete-btn"><i class="fas fa-trash"></i>Delete</a>
                                     </div>
                                 </td>
                             </tr>
@@ -117,14 +117,14 @@
                             </div>
                             <p class="mobile-card-desc">{{ item.description|truncatechars:100 }}</p>
                             <div class="mobile-card-actions">
-                                <a href="{% url 'why_choose_edit' item.pk %}" class="action-btn edit-btn">✏️ Edit</a>
+                                <a href="{% url 'why_choose_edit' item.pk %}" class="action-btn edit-btn"><i class="fas fa-pen"></i>Edit</a>
                                 <a href="{% url 'why_choose_toggle_status' item.pk %}"
                                    class="action-btn {% if item.is_active %}hide-btn{% else %}show-btn{% endif %}">
-                                    {% if item.is_active %}⏸️ Hide{% else %}▶️ Show{% endif %}
+                                    {% if item.is_active %}<i class="fas fa-eye-slash"></i> Hide{% else %}<i class="fas fa-eye"></i> Show{% endif %}
                                 </a>
                                 <a href="{% url 'why_choose_delete' item.pk %}"
                                    onclick="return confirm('Are you sure?')"
-                                   class="action-btn delete-btn">🗑️ Delete</a>
+                                   class="action-btn delete-btn"><i class="fas fa-trash"></i>Delete</a>
                             </div>
                         </div>
                     {% endfor %}
@@ -143,9 +143,9 @@
     <!-- Services Section -->
     <div class="ad-card">
         <div class="ad-card-header">
-            <h2>🎓 Our Services</h2>
+            <h2> Our Services</h2>
             <a href="{% url 'service_create' %}" class="ad-btn ad-btn-primary">
-                <span>➕</span> Add Service
+                <span><i class="fas fa-plus"></i></span> Add Service
             </a>
         </div>
         <div class="ad-card-body">
@@ -179,14 +179,14 @@
                                 <td>{{ item.order }}</td>
                                 <td class="ad-actions">
                                     <div class="action-buttons">
-                                        <a href="{% url 'service_edit' item.pk %}" class="action-btn edit-btn">✏️ Edit</a>
+                                        <a href="{% url 'service_edit' item.pk %}" class="action-btn edit-btn"><i class="fas fa-pen"></i>Edit</a>
                                         <a href="{% url 'service_toggle_status' item.pk %}"
                                            class="action-btn {% if item.is_active %}hide-btn{% else %}show-btn{% endif %}">
-                                            {% if item.is_active %}⏸️ Hide{% else %}▶️ Show{% endif %}
+                                            {% if item.is_active %}<i class="fas fa-eye-slash"></i> Hide{% else %}<i class="fas fa-eye"></i> Show{% endif %}
                                         </a>
                                         <a href="{% url 'service_delete' item.pk %}"
                                            onclick="return confirm('Are you sure?')"
-                                           class="action-btn delete-btn">🗑️ Delete</a>
+                                           class="action-btn delete-btn"><i class="fas fa-trash"></i>Delete</a>
                                     </div>
                                 </td>
                             </tr>
@@ -214,14 +214,14 @@
                             </div>
                             <p class="mobile-card-desc">{{ item.service_description|truncatechars:100 }}</p>
                             <div class="mobile-card-actions">
-                                <a href="{% url 'service_edit' item.pk %}" class="action-btn edit-btn">✏️ Edit</a>
+                                <a href="{% url 'service_edit' item.pk %}" class="action-btn edit-btn"><i class="fas fa-pen"></i>Edit</a>
                                 <a href="{% url 'service_toggle_status' item.pk %}"
                                    class="action-btn {% if item.is_active %}hide-btn{% else %}show-btn{% endif %}">
-                                    {% if item.is_active %}⏸️ Hide{% else %}▶️ Show{% endif %}
+                                    {% if item.is_active %}<i class="fas fa-eye-slash"></i> Hide{% else %}<i class="fas fa-eye"></i> Show{% endif %}
                                 </a>
                                 <a href="{% url 'service_delete' item.pk %}"
                                    onclick="return confirm('Are you sure?')"
-                                   class="action-btn delete-btn">🗑️ Delete</a>
+                                   class="action-btn delete-btn"><i class="fas fa-trash"></i>Delete</a>
                             </div>
                         </div>
                     {% endfor %}

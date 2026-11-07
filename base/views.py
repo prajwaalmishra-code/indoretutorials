@@ -77,7 +77,9 @@ from adminpanel.models import (
 # ==================== OTHER IMPORTS ====================
 import json
 import requests
-from urllib.parse import quote
+from urllib.parse import quote, urlencode, urlparse
+from .context_processors import safe_next_url
+from . import tutor
 import os
 import secrets
 import string
@@ -711,7 +713,7 @@ def my_test_results(request):
     return render(request, 'my_results.html', context)
 
 
-SCHOOL_BOARD_COLORS = {'cbse': '#2563eb', 'icse': '#7c3aed', 'up': '#ea580c'}
+SCHOOL_BOARD_COLORS = {'cbse': '#2563eb', 'icse': '#7c3aed', 'up': '#ea580c', 'nios': '#0d9488'}
 BOARD_SHORT_NAMES = {'cbse': 'CBSE', 'icse': 'ICSE', 'up': 'UP Board', **{b.code: b.category for b in STATE_BOARDS}}
 
 
@@ -783,9 +785,9 @@ def _test_series_directory(purchased_ids):
 
     tabs = []
 
-    # CBSE, ICSE and UP Board: one row of class boxes per board.
+    # CBSE, ICSE, UP Board and NIOS: one row of class boxes per board.
     main_sections = []
-    for code in ('cbse', 'icse', 'up'):
+    for code in SCHOOL_BOARD_COLORS:
         items = [s for s in series_list if s.board == code]
         if items:
             main_sections.append({
@@ -796,7 +798,7 @@ def _test_series_directory(purchased_ids):
             })
     if main_sections:
         tabs.append({
-            'key': 'school', 'label': 'CBSE, ICSE & UP', 'icon': 'school', 'layout': 'boards',
+            'key': 'school', 'label': 'School Boards', 'icon': 'school', 'layout': 'boards',
             'sections': main_sections, 'count': sum(len(s['items']) for s in main_sections),
         })
 
@@ -2084,10 +2086,21 @@ def loginuser(request):
 # base/views.py (add these imports and views)
 
 
+def _requested_next(request):
+    """Validated same-site ``next`` from the POST body or query string (or None)."""
+    return safe_next_url(request, request.POST.get('next') or request.GET.get('next'))
+
+
+def _login_url_with_next(next_url):
+    """URL of the login page that returns the user to ``next_url`` afterwards."""
+    url = reverse('login')
+    return f"{url}?{urlencode({'next': next_url})}" if next_url else url
+
+
 def login_view(request):
     """Handle user login with 'remember me'. Rate limited per IP and per account."""
     if request.user.is_authenticated:
-        return redirect('home')
+        return redirect(_requested_next(request) or 'home')
 
     if request.method == 'POST':
         email = request.POST.get('email', '').strip().lower()[:254]
@@ -2117,13 +2130,8 @@ def login_view(request):
 
             messages.success(request, f'Welcome back, {user.get_full_name_or_email()}!')
 
-            # Redirect to 'next' if present (validated to prevent open-redirects)
-            next_url = request.POST.get('next') or request.GET.get('next')
-            if next_url and url_has_allowed_host_and_scheme(
-                url=next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
-            ):
-                return redirect(next_url)
-            return redirect('home')
+            # Back to the page the user came from (validated to prevent open-redirects)
+            return redirect(_requested_next(request) or 'home')
 
         inactive = User.objects.filter(email__iexact=email, is_active=False).exists()
         if inactive:
@@ -2295,9 +2303,16 @@ def reset_password(request):
 
 def logout_view(request):
     """Handle user logout"""
+    referer = request.META.get('HTTP_REFERER', '')
+    next_url = None
+    if referer and safe_next_url(request, referer):
+        parsed = urlparse(referer)
+        next_url = parsed.path + (f"?{parsed.query}" if parsed.query else '')
+        if next_url == '/' or next_url.startswith(reverse('logout_user')):
+            next_url = None
     logout(request)
     messages.success(request, 'You have been logged out successfully.')
-    return redirect('login')
+    return redirect(_login_url_with_next(next_url))
 
 
 def is_mobile_request(request):
@@ -2323,6 +2338,7 @@ def signup_view(request):
             return render(request, "signup.html", {"form": form, "smtp_configured": has_smtp_configured()}, status=429)
 
         if form.is_valid():
+            next_url = _requested_next(request)
             is_mobile = is_mobile_request(request)
             smtp_configured = has_smtp_configured()
             
@@ -2342,7 +2358,7 @@ def signup_view(request):
                             request,
                             "Account created successfully. Please log in."
                         )
-                        return redirect("login")
+                        return redirect(_login_url_with_next(next_url))
                     
                     # PATH 2: MOBILE + SMTP → FAST OTP (3s timeout)
                     if is_mobile:
@@ -2355,6 +2371,7 @@ def signup_view(request):
                         
                         if otp:
                             request.session["pending_user_id"] = user.id
+                            request.session["post_auth_next"] = next_url
                             messages.success(
                                 request,
                                 "Account created! Check email for OTP (3s delivery)."
@@ -2368,7 +2385,7 @@ def signup_view(request):
                                 request,
                                 "We could not send the verification email, so your account was activated. Please log in."
                             )
-                            return redirect("login")
+                            return redirect(_login_url_with_next(next_url))
                     
                     # PATH 3: DESKTOP + SMTP → Full OTP (10s timeout)
                     user.is_active = False
@@ -2380,6 +2397,7 @@ def signup_view(request):
                     
                     if otp:
                         request.session["pending_user_id"] = user.id
+                        request.session["post_auth_next"] = next_url
                         messages.success(
                             request,
                             "Account created! Check your email for verification code."
@@ -2392,7 +2410,7 @@ def signup_view(request):
                             request,
                             "We could not send the verification email. Please try signing up again later."
                         )
-                        return redirect("login")
+                        return redirect(_login_url_with_next(next_url))
 
             except Exception as e:
                 logger.exception("Signup error - fallback to login")
@@ -2400,7 +2418,7 @@ def signup_view(request):
                     request,
                     "Something went wrong. You can log in directly."
                 )
-                return redirect("login")
+                return redirect(_login_url_with_next(next_url))
 
         # Invalid form
         messages.error(request, "Please fix the form errors below.")
@@ -2447,10 +2465,11 @@ def verify_otp_view(request):
                     user.save()
 
                     login(request, user)
-                    del request.session['pending_user_id']
+                    request.session.pop('pending_user_id', None)
+                    next_url = safe_next_url(request, request.session.pop('post_auth_next', None))
 
                     messages.success(request, 'Email verified successfully! Welcome.')
-                    return redirect('home')
+                    return redirect(next_url or 'home')
                 else:
                     messages.error(request, 'OTP has expired. Please request a new one.')
             except OTPVerification.DoesNotExist:
@@ -3541,13 +3560,6 @@ def payment_handler(request):
 
 # ===== TUTOR (AI TEACHER CHAT) =====
 
-TUTOR_PERSONA = (
-    "[Context for this reply: You are Tutor, the AI teacher on the Indore Tutorials learning platform "
-    "for Indian students (CBSE, ICSE and state boards, and exams such as JEE, NEET, SSC, banking and UPSC). "
-    "Your name is Tutor. Teach patiently: explain step by step in simple language with examples, and keep "
-    "replies short unless the student asks for detail. If the student writes in Hindi or Hinglish, reply the "
-    "same way. Do not mention any other product, company or model name.{student}]\n\nStudent: "
-)
 TUTOR_HISTORY_LIMIT = 12        # messages sent upstream per request
 TUTOR_MESSAGE_LIMIT = 2000      # characters per student message
 TUTOR_HOURLY_LIMIT = {'user': 60, 'guest': 15}
@@ -3558,8 +3570,7 @@ def _tutor_rate_limited(request):
     if request.user.is_authenticated:
         key, limit = f"tutor-rate:u{request.user.pk}", TUTOR_HOURLY_LIMIT['user']
     else:
-        ip = request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip() or request.META.get('REMOTE_ADDR', '')
-        key, limit = f"tutor-rate:ip{ip}", TUTOR_HOURLY_LIMIT['guest']
+        key, limit = f"tutor-rate:ip{tutor.client_ip(request)}", TUTOR_HOURLY_LIMIT['guest']
     cache.add(key, 0, timeout=3600)
     try:
         count = cache.incr(key)
@@ -3571,10 +3582,7 @@ def _tutor_rate_limited(request):
 
 @require_POST
 def tutor_chat(request):
-    """Relay a chat with Tutor to the AI API, keeping the API key on the server."""
-    if not settings.TUTOR_API_KEY:
-        return JsonResponse({'error': 'Tutor is not set up yet. Please try again later.'}, status=503)
-
+    """Relay a chat with Tutor to the AI provider (key stays on the server) and log the question."""
     try:
         payload = json.loads(request.body or b'{}')
     except ValueError:
@@ -3583,6 +3591,7 @@ def tutor_chat(request):
     messages_in = payload.get('messages')
     if not isinstance(messages_in, list) or not messages_in:
         return JsonResponse({'error': 'Send at least one message.'}, status=400)
+    page = str(payload.get('page') or '')[:300]
 
     history = []
     for item in messages_in[-TUTOR_HISTORY_LIMIT:]:
@@ -3597,36 +3606,38 @@ def tutor_chat(request):
         history.pop(0)
     if not history or history[-1]['role'] != 'user':
         return JsonResponse({'error': 'Send a question for Tutor.'}, status=400)
+    question = history[-1]['content']
+
+    config = tutor.load_settings()
+    if not config.is_enabled or not config.effective_key:
+        tutor.log_query(request, question, page, 'disabled')
+        return JsonResponse({'error': 'Tutor is not available right now. Please try again later.'}, status=503)
 
     if _tutor_rate_limited(request):
+        tutor.log_query(request, question, page, 'rate_limited')
         return JsonResponse(
             {'error': 'You have sent a lot of questions this hour. Please take a short break and try again.'},
             status=429,
         )
 
-    name = request.user.first_name if request.user.is_authenticated else ''
-    student = f" The student's name is {name}." if name else ''
-    history[-1] = {'role': 'user', 'content': TUTOR_PERSONA.format(student=student) + history[-1]['content']}
+    if request.user.is_authenticated and request.user.first_name:
+        history[-1] = {
+            'role': 'user',
+            'content': f"[The student's name is {request.user.first_name}.]\n{question}",
+        }
 
-    try:
-        response = requests.post(
-            settings.TUTOR_API_URL,
-            json={'model': settings.TUTOR_MODEL, 'messages': history},
-            headers={'Authorization': f'Bearer {settings.TUTOR_API_KEY}'},
-            timeout=60,
-        )
-        data = response.json()
-    except requests.Timeout:
-        return JsonResponse({'error': 'Tutor is taking too long to answer. Please ask again.'}, status=504)
-    except (requests.RequestException, ValueError):
-        logger.exception("Tutor API request failed")
-        return JsonResponse({'error': 'Tutor is unavailable right now. Please try again shortly.'}, status=502)
-
-    reply = data.get('reply') if response.ok else None
+    reply, usage, error, latency = tutor.timed_ask(config, history)
     if not reply:
-        logger.error("Tutor API error %s: %s", response.status_code, data.get('error'))
-        return JsonResponse({'error': 'Tutor could not answer that. Please try again.'}, status=502)
-    return JsonResponse({'reply': reply})
+        tutor.log_query(request, question, page, 'error', error=error, latency_ms=latency, model=config.model_name)
+        message = ('Tutor is taking too long to answer. Please ask again.' if error == 'timeout'
+                   else 'Tutor could not answer that. Please try again.')
+        if request.user.is_authenticated and request.user.is_staff:
+            message += f" (Admin only: {error or 'no reply'}. Check the key under Tutor AI.)"
+        return JsonResponse({'error': message}, status=504 if error == 'timeout' else 502)
+
+    tutor.log_query(request, question, page, 'ok', reply=reply, latency_ms=latency, usage=usage,
+                    model=config.model_name)
+    return JsonResponse({'reply': reply, 'suggestions': tutor.suggest_series(question)})
 
 
 # ===== ERROR PAGES =====

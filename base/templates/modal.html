@@ -41,11 +41,11 @@
             </div>
             <h4 class="coupon-login-message__title">Login Required</h4>
             <p class="coupon-login-message__text">You need to be logged in to apply coupons and get amazing discounts on your purchases.</p>
-            <a href="{% url 'login' %}" class="coupon-login-message__button">
+            <a href="{{ login_url }}" class="coupon-login-message__button">
                 <i class="fa fa-sign-in"></i> Login Now
             </a>
             <p class="coupon-login-message__signup">
-                Don't have an account? <a href="{% url 'signup' %}">Sign up here</a>
+                Don't have an account? <a href="{{ signup_url }}">Sign up here</a>
             </p>
         </div>
         {% endif %}

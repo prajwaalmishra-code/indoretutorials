@@ -44,7 +44,7 @@
     <div class="err-actions">
       <a class="err-primary" href="/">Go to homepage</a>
       {% if status == 404 %}<a class="err-secondary" href="/test-series/">Browse test series</a>
-      {% elif status == 403 %}<a class="err-secondary" href="/login/">Log in</a>
+      {% elif status == 403 %}<a class="err-secondary" href="{{ login_url|default:'/login/' }}">Log in</a>
       {% else %}<a class="err-secondary" href="javascript:history.back()">Go back</a>{% endif %}
     </div>
   </main>
